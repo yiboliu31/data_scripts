@@ -1,0 +1,14 @@
+## AWS Scripts ##
+
+aws s3 sync /media/dean/datastore1/datasets/darknet_evaluate/trained_weights/ s3://kache-gym/object-detection/darknet/
+
+# Prepare BDD100k Validation Set Image List #
+cd /media/dean/datastore1/datasets/BerkeleyDeepDrive/scalabel/scripts && python prepare_data.py -i /media/dean/datastore1/datasets/BerkeleyDeepDrive/bdd100k/images/100k/val/ --s3 kache-scalabel/kache-bags/kache-annotations
+
+cd /media/dean/datastore1/datasets/BerkeleyDeepDrive/scalabel/scripts && python prepare_data.py -i /media/dean/datastore1/datasets/BerkeleyDeepDrive/bdd100k/images/100k/train/
+
+
+## BASH SCRIPTS ##
+
+find /media/dean/datastore1/datasets/darknet_evaluate/trained_weights/ -type
+ f -iname '*.txt' -exec rm {} \;
