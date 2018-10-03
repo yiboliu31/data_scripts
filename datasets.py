@@ -52,6 +52,7 @@ class DataFormatter(object):
         self.check_s3 = check_s3
         self.output_path = output_path
         self.trainer_prefix = trainer_prefix
+        os.makedirs(os.path.join(self.output_path, 'coco'), 0o755 , exist_ok = True )
         self.coco_directory = os.path.join(self.output_path, 'coco')
 
         # Check if pickle_file is None or does not exist
@@ -98,7 +99,6 @@ class DataFormatter(object):
 
             ###------------------ BDD100K Data Handler -----------------------###
             elif data_format == Format.bdd:
-                BDD100K_ANNOTATIONS_FILE = os.path.join(self.coco_directory,'annotations/bdd100k_altered_instances_train2014.json')
                 BDD100K_VIDEOS_PATH='https://s3-us-west-2.amazonaws.com/kache-scalabel/bdd100k/videos/train/'
                 with open(annotations_list, 'r') as f:
                     data = json.load(f)
@@ -106,11 +106,11 @@ class DataFormatter(object):
                     for idx, img_label in enumerate(data):
                         img_key = self.trainer_prefix+img_label['name']
                         img_uri = self.maybe_download(os.path.join(BDD100K_DIRECTORY, 'images/100k/train', img_label['name']),
-                                                        os.path.join(self.output_path , img_key))
-
-                        if self.s3_bucket: img_uri = self.send_to_s3(img_uri)
+                                                        os.path.join(self.coco_directory, 'images' , self.trainer_prefix.split('_')[1], img_key))
                         im = Image.open(img_uri)
                         width, height = im.size
+                        if self.s3_bucket: img_uri = self.send_to_s3(img_uri.replace(trainer_prefix,''))
+
 
                         if img_label.get('attributes', None):
                             self._images[img_key] = {'url': img_uri, 'name': img_uri, 'coco_path': os.path.join(self.coco_directory, 'images' , self.trainer_prefix.split('_')[1], img_key),
@@ -134,7 +134,7 @@ class DataFormatter(object):
                             if ann.get('attributes', None):
                                 label['attributes'] = {'Occluded': ann['attributes'].get('occluded', False),
                                                        'Truncated': ann['attributes'].get('truncated', False),
-                                                        'Traffic Light Color': [0, 'NA']}
+                                                       'Traffic Light Color': [0, 'NA']}
 
                             label['manual'] =  ann.get('manualShape', True)
                             label['manualAttributes'] = ann.get('manualAttributes', True)
@@ -166,7 +166,6 @@ class DataFormatter(object):
                             'region_id', 'region_shape_attributes', 'region_attributes']
                 vgg_annotations = pd.read_csv(annotations_list, names=HEADER_ROW, skiprows=1)
                 img_paths = sorted(set(vgg_annotations['filename'].tolist()))
-
                 num_imgs = len(img_paths)
                 ann_idx = 0
 
@@ -270,6 +269,7 @@ class DataFormatter(object):
         if not os.path.exists(destination):
             if os.path.exists(source_uri):
                 #print('Copying file', source_uri, 'to file:', destination)
+                os.makedirs(os.path.split(destination)[0], exist_ok = True)
                 shutil.copyfile(source_uri, destination)
             else:
                 destination, _ = urllib.request.urlretrieve(source_uri, destination)
@@ -292,3 +292,36 @@ class DataFormatter(object):
                 res = subprocess.call("aws s3 cp {} {}".format(img_path, s3_bucket))
                 print(res)
         return os.path.join('https://s3-us-west-2.amazonaws.com', s3_path)
+
+    def generate_coco_annotations(self):
+        cats2ids = {}
+        # categories = set([[[ d['category'] for d in anns[i]['labels']]  for i in anns if anns[i].get('labels', None)] for img_key, anns in self._annotations.items()])
+        anns = [i for i in [d for d in [ann for ann in self._annotations.values()]]]
+        cats = [[label['category'] for label in labels] for labels in anns]
+        categories = []
+        [categories.extend(cat) for cat in cats]
+        self.category_names = categories
+        self.cats2ids, self.ids2cats = {}, {}
+
+        for i, label in enumerate(set(categories)):
+            self.cats2ids[str(label).lower()] = i
+        self.ids2cats = {i: v for v, i in self.cats2ids.items()}
+
+        # Generate Names File #
+        self.config_dir = os.path.join(os.path.split(self.output_path)[0], 'cfg')
+        with open(os.path.join(self.config_dir, self.trainer_prefix+'.names'), 'w+') as writer:
+            for category in set(self.category_names):
+                writer.write(category+'\n')
+
+
+    def export(self, format = Format.coco):
+        if format == Format.coco:
+            # Create COCO label
+            self.generate_coco_annotations()
+
+        elif format == Format.scalabel or format == Format.bdd:
+            os.makedirs(os.path.join(self.output_path, 'bdd100k', 'annotations'), 0o755 , exist_ok = True )
+            self.bdd100k_annotations = os.path.join(self.output_path, 'bdd100k', 'annotations/bdd100k_altered_annotations.json')
+            with open(self.bdd100k_annotations, "w+") as output_json_file:
+                imgs_list = list(self._images.values())[:100]
+                json.dump(imgs_list, output_json_file)
