@@ -24,6 +24,7 @@ import shutil
 import pickle
 import pandas as pd
 import subprocess
+from datetime import datetime
 
 
 class Format(Enum):
@@ -293,31 +294,142 @@ class DataFormatter(object):
                 print(res)
         return os.path.join('https://s3-us-west-2.amazonaws.com', s3_path)
 
+    def generate_names_cfg(self):
+        self.config_dir = os.path.join(os.path.split(self.output_path)[0], 'cfg')
+        with open(os.path.join(self.config_dir, self.trainer_prefix+'.names'), 'w+') as writer:
+            for category in set(self.category_names):
+                writer.write(category+'\n')
+
+    def convert_anns_to_coco(self):
+        images, anns = [], []
+        img_offset, ann_index = 10000001, 100000000
+        num_imgs = len(self._annotations.keys())
+
+        for img_id, fname in enumerate(self._annotations.keys()):
+            width, height = self._images[fname]['width'], self._images[fname]['height']
+
+            if not fname.startswith(self.trainer_prefix):
+                fname = img_prefix+fname
+            dic = {'file_name': fname, 'id': img_offset+img_id, 'height': height, 'width': width}
+            images.append(dic)
+
+            # xy coords: [xstart, ystart, xstop, ystop] -> bbox = [x,y,width,height]
+            for annotation in [x for x in self._annotations[fname] if x['category'] in self.coco_categories]:
+                bbox = annotation['box2d']
+
+                if bbox:
+                    # xy coords: [xstart, ystart, xstop, ystop] -> bbox = [x,y,width,height]
+                    xstart, ystart, xstop, ystop = float(bbox['x1']),float(bbox['y1']),float(bbox['x2']),float(bbox['y2'])
+
+                    if xstart < 0:
+                        xstart = 0.0
+                    if ystart < 0:
+                        ystart = 0.0
+                    if ystop <= 0:
+                        ystop = 3.0
+                    if xstop <= 0:
+                        xstop = 3.0
+
+                    # Get Points from Bounding Box
+                    pts = []
+                    pts.append((xstart , xstop))
+                    pts.append((xstop , ystart))
+                    pts.append((xstop , ystop))
+                    pts.append((xstart , ystop))
+
+                    segmentations = []
+                    segmentations.append([])
+                    width = xstop - xstart
+                    height = ystop - ystart
+                    bbox = (xstart, ystart, width, height)
+                    area = float(width*height)
+
+                    annotation = {
+                        'segmentation': segmentations,
+                        'iscrowd': 0,
+                        'image_id': img_offset+img_id, # Don't want to conflict with existing dataset
+                        'category_id': cats2ids[annotation['category']],
+                        'id': ann_index,
+                        'bbox': bbox,
+                        'area': area
+                    }
+                    ann_index+=1
+                    anns.append(annotation)
+        return anns, images
+
     def generate_coco_annotations(self):
         cats2ids = {}
-        # categories = set([[[ d['category'] for d in anns[i]['labels']]  for i in anns if anns[i].get('labels', None)] for img_key, anns in self._annotations.items()])
         anns = [i for i in [d for d in [ann for ann in self._annotations.values()]]]
         cats = [[label['category'] for label in labels] for labels in anns]
         categories = []
         [categories.extend(cat) for cat in cats]
-        self.category_names = categories
+        self.category_names = set(categories)
         self.cats2ids, self.ids2cats = {}, {}
 
         for i, label in enumerate(set(categories)):
             self.cats2ids[str(label).lower()] = i
         self.ids2cats = {i: v for v, i in self.cats2ids.items()}
 
-        # Generate Names File #
-        self.config_dir = os.path.join(os.path.split(self.output_path)[0], 'cfg')
-        with open(os.path.join(self.config_dir, self.trainer_prefix+'.names'), 'w+') as writer:
-            for category in set(self.category_names):
-                writer.write(category+'\n')
+        self.coco_categories = []
+        for c in self.category_names:
+            self.coco_categories.append({"id": self.cats2ids[c], "name": c, "supercategory":c})
+
+
+        coco_anns, coco_imgs = self.convert_anns_to_coco()
+
+
+
+        INFO = {
+            "description": "Road Object-Detections Dataset based on MS COCO",
+            "url": "https://kache.ai",
+            "version": "0.0.1",
+            "year": 2018,
+            "contributor": "deanwebb",
+            "date_created": datetime.utcnow().isoformat(' ')
+        }
+
+        LICENSES = [
+            {
+                "id": 1,
+                "name": "The MIT License (MIT)",
+                "url": "https://opensource.org/licenses/MIT",
+                "description":  """
+                                The MIT License (MIT)
+                                Copyright (c) 2017 Matterport, Inc.
+
+                                Permission is hereby granted, free of charge, to any person obtaining a copy
+                                of this software and associated documentation files (the "Software"), to deal
+                                in the Software without restriction, including without limitation the rights
+                                to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+                                copies of the Software, and to permit persons to whom the Software is
+                                furnished to do so, subject to the following conditions:
+
+                                The above copyright notice and this permission notice shall be included in
+                                all copies or substantial portions of the Software.
+
+                                THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+                                IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+                                FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+                                AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+                                LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+                                OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+                                THE SOFTWARE.
+                                """
+            }
+        ]
+
+        coco_output = {'info': INFO, 'licenses': LICENSES, 'images': coco_imgs, 'annotations':coco_anns, 'categories': self.coco_categories}
+        os.makedirs(os.path.join(self.coco_directory, 'annotations'), exist_ok = True)
+        self.coco_annotations_file = os.path.join(self.coco_directory, 'annotations', '{}_annotations.json'.format(self.trainer_prefix))
+        with open(self.coco_annotations_file, 'w+') as output_json_file:
+            json.dump(coco_output, output_json_file)
+
 
 
     def export(self, format = Format.coco):
         if format == Format.coco:
-            # Create COCO label
             self.generate_coco_annotations()
+            self.generate_names_cfg()
 
         elif format == Format.scalabel or format == Format.bdd:
             os.makedirs(os.path.join(self.output_path, 'bdd100k', 'annotations'), 0o755 , exist_ok = True )
