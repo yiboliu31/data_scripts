@@ -14,7 +14,7 @@ import numpy
 import cv2
 from collections import OrderedDict
 import scipy.misc
-from skimage import measure   
+from skimage import measure
 from shapely.geometry import Polygon, MultiPolygon, MultiPoint
 import random
 import skimage.io as io
@@ -32,43 +32,38 @@ class Format(Enum):
     darknet = 2
     bdd = 3
     vgg = 4
-    
-########################
+
+##########  ############
 ##      Refactor      ##
-########################
+##########  ############
 
 BASE_DIR = '/media/dean/datastore1/datasets/BerkeleyDeepDrive/'
 IMAGE_LIST_DIR = os.path.join(BASE_DIR, 'bdd100k/images/100k/train/image_list.yml')
 LABEL_LIST_DIR = os.path.join(BASE_DIR, 'bdd100k/labels/bdd100k_labels_images_train.json')
-COCO_DIRECTORY = os.path.join(WORKING_DIR, 'data/coco')
-DARKNET_TRAINING_DIR = os.path.join('/media/dean/datastore1/datasets/darknet/data/coco/images/train2014')
-img_prefix = 'COCO_train2014_0000'
+TRAINING_DIRECTORY = os.path.join('/media/dean/datastore1/datasets/darknet/data/coco/images/train2014')
 DEFAULT_IMG_EXTENSION = '.jpg'
 
-BDD100K_ANNOTATIONS_FILE = os.path.join(COCO_DIRECTORY,'annotations/bdd100k_altered_instances_train2014.json')
-BDD100K_VIDEOS_PATH='https://s3-us-west-2.amazonaws.com/kache-scalabel/bdd100k/videos/train/'
 
-    
-    
 class DataFormatter(object):
-    def __init__(self, annotations_list, s3_bucket = None, check_s3 = False, image_list = None, data_format=Format.scalabel, output_path=os.getcwd(), pickle_file = None):
+    def __init__(self, annotations_list, s3_bucket = None, check_s3 = False, data_format=Format.scalabel, output_path=os.getcwd(), pickle_file = None, trainer_prefix = None):
         self._images = {}
         self._annotations = {}
         self.s3_bucket = s3_bucket
         self.check_s3 = check_s3
-        
+        self.output_path = output_path
+        self.trainer_prefix = trainer_prefix
+        self.coco_directory = os.path.join(self.output_path, 'coco')
+        BDD100K_ANNOTATIONS_FILE = os.path.join(self.coco_directory,'annotations/bdd100k_altered_instances_train2014.json')
+        BDD100K_VIDEOS_PATH='https://s3-us-west-2.amazonaws.com/kache-scalabel/bdd100k/videos/train/'
+
         # Check if pickle_file is None or does not exist
         if pickle_file and os.path.exists(pickle_file):
-            self._pickle_file = pickle_file
-            pickle_in = open(self._pickle_file,"rb")
-            pickle_dict = pickle.load(pickle_in)
-            self._images = pickle_dict['images']
-            self._annotations = pickle_dict['annotations']
+            self._images, self._annotations = self.get_cache(pickle_file)
         else:
-            path = os.path.normpath(image_list)
+            path = os.path.normpath(annotations_list)
             self._pickle_file = "{}.pickle".format('_'.join(path.split(os.sep)[5:]))
-        
-        
+
+
             ###------------------ Scalabel Data Handler -----------------------###
             if data_format == Format.scalabel:
                 with open(image_list, 'r') as stream:
@@ -77,17 +72,17 @@ class DataFormatter(object):
                         for img in image_data:
                             img_url = img['url']
                             fname = os.path.split(img_url)[-1]
-                            full_path = maybe_download(img_url, img_prefix+fname)
+                            full_path = self.maybe_download(img_url, img_prefix+fname)
                             if s3_bucket:
                                 self.send_to_s3(os.path.join(DARKNET_TRAINING_DIR, img_prefix+fname))
-                                
+
                             im = Image.open(full_path)
                             width, height = im.size
                             self._images[img_prefix+fname] = {'url': img_url, 'coco_path': full_path,
                                                  'width': width, 'height': height}
 
 
-                # Import Labels            
+                # Import Labels
                 with open(annotations_list, 'r') as f:
                     data = json.load(f)
 
@@ -99,47 +94,39 @@ class DataFormatter(object):
                         img_data['videoName'] = ann['videoName']
                         img_data['timestamp'] = ann['timestamp']
                         img_data['index'] = ann['index']
-                        
+
                         self._images[img_prefix+fname] = img_data
 
-                        
+
             ###------------------ BDD100K Data Handler -----------------------###
             elif data_format == Format.bdd:
-                with open(image_list, 'r') as stream:
-                    image_data = yaml.load(stream)
-                    start_idx = int(1e6)
-                    if image_data:
-                        for idx, img in enumerate(image_data):
-                            img_url = img['url']
-                            fname = os.path.split(img_url)[-1]
-                            full_path = maybe_download(img_url, img_prefix+fname)
-                            im = Image.open(full_path)
-                            width, height = im.size
-                            
-                            if s3_bucket:
-                                img_url = self.send_to_s3(os.path.join(DARKNET_TRAINING_DIR, fname))
-                                
-                            self._images[img_prefix+fname] = {'url': img_url, 'name': img_url, 'coco_path': full_path,
-                                                              'width': width, 'height': height, 'labels': [], 
-                                                              'index': idx, 'timestamp': 10000, 
-                                                              'videoName': BDD100K_VIDEOS_PATH+"{}.mov".format(os.path.splitext(fname)[0])}
-                    print('Image Length:', len(self._images))
-                # Get labels
                 with open(annotations_list, 'r') as f:
                     data = json.load(f)
                     ann_idx = 0
                     for img_label in data:
-                        fname = img_label['name']
-                        img_key = img_prefix+fname
-                        self._annotations[img_key] = []
-                        img_data = self._images[img_key]
-                        
-                        if img_label.get('attributes', None):
-                            img_data['attributes'] = {'weather': img_label['attributes']['weather'],
-                                                 'scene': img_label['attributes']['scene'],
-                                                 'timeofday': img_label['attributes']['timeofday']}
+                        img_key = self.trainer_prefix+img_label['name']
+                        img_uri = self.maybe_download(os.path.join(BDD100K_DIRECTORY, 'images/100k/train', img_label['name']),
+                                                        os.path.join(self.output_path , img_key))
 
-                        
+                        if self.s3_bucket: img_uri = self.send_to_s3(img_uri)
+                        im = Image.open(img_uri)
+                        width, height = im.size
+
+                        if img_label.get('attributes', None):
+                            self._images[img_key] = {'url': img_uri, 'name': img_uri, 'coco_path': full_path,
+                                                              'width': width, 'height': height, 'labels': [],
+                                                              'index': idx, 'timestamp': 10000,
+                                                              'videoName': BDD100K_VIDEOS_PATH+"{}.mov".format(os.path.splitext(img_label['name'])[0]),
+                                                              'attributes': {'weather': img_label['attributes']['weather'],
+                                                                             'scene': img_label['attributes']['scene'],
+                                                                             'timeofday': img_label['attributes']['timeofday']}}
+                        else:
+                            self._images[img_key] = {'url': img_uri, 'name': img_uri, 'coco_path': full_path,
+                                                              'width': width, 'height': height, 'labels': [],
+                                                              'index': idx, 'timestamp': 10000,
+                                                              'videoName': BDD100K_VIDEOS_PATH+"{}.mov".format(os.path.splitext(img_label['name'])[0])}
+
+                        self._annotations[img_key] = []
                         for ann in [l for l in img_label['labels'] if l.get('box2d', None)]:
                             label = {}
                             label['id'] = int(ann_idx)
@@ -148,14 +135,12 @@ class DataFormatter(object):
                                 label['attributes'] = {'Occluded': ann['attributes'].get('occluded', False),
                                                        'Truncated': ann['attributes'].get('truncated', False),
                                                         'Traffic Light Color': [0, 'NA']}
-                            
-                            
-                            
+
                             label['manual'] =  ann.get('manualShape', True)
                             label['manualAttributes'] = ann.get('manualAttributes', True)
                             label['poly2d'] = ann.get('poly2d', None)
                             label['box3d'] = ann.get('box3d', None)
-               
+
                             label['box2d'] = {'x1': ann['box2d']['x1'],
                                         'x2': ann['box2d']['x2'],
                                         'y1': ann['box2d']['y1'],
@@ -170,19 +155,14 @@ class DataFormatter(object):
                                 elif ann['attributes']['trafficLightColor'] == 'red':
                                     label['attributes']['Traffic Light Color'] = [3, 'R']
 
-                            img_data['labels'].append(label)
+                            self._images[img_key]['labels'].append(label)
                             ann_idx +=1
-
-                        self._images[img_key] = img_data
                         self._annotations[img_key].extend(img_data['labels'])
-                        
-                        if len(img_data['labels']) == 27:
-                            print(img_data['name'])
 
-            
+
             ###------------------ VGG Data Handler-(Legacy Labeler) -----------------------###
             elif data_format == Format.vgg:
-                HEADER_ROW=['filename', 'file_size', 'file_attributes', 'region_count', 
+                HEADER_ROW=['filename', 'file_size', 'file_attributes', 'region_count',
                             'region_id', 'region_shape_attributes', 'region_attributes']
                 vgg_annotations = pd.read_csv(annotations_list, names=HEADER_ROW, skiprows=1)
                 img_paths = sorted(set(vgg_annotations['filename'].tolist()))
@@ -201,24 +181,24 @@ class DataFormatter(object):
                     urlstofilepaths[img_url] = maybe_download(img_url, os.path.join(DARKNET_TRAINING_DIR, img_prefix+fname))
                     # Get Image Size in Bytes
                     img_file_size =  os.stat(urlstofilepaths[img_url]).st_size
-                    
+
                     if s3_bucket:
                         img_url = self.send_to_s3(urlstofilepaths[img_url])
-                    
-                    
+
+
                     img['name'] = img_prefix+fname
                     img['url'] = img_url
                     img['videoName'] = ''
                     img['file_size'] = img_file_size
                     img['index'] = idx
-                    img['timestamp'] = 10000                    
+                    img['timestamp'] = 10000
                     img['labels'] = []
                     img['attributes'] = {'weather': 'clear',
                                          'scene': 'highway',
-                                         'timeofday': 'night'}                    
+                                         'timeofday': 'night'}
                     self._images[img_prefix+fname] = img
                     self._annotations[img_prefix+fname] = []
-                    
+
                     for annotation in [x for x in vgg_annotations.as_matrix() if x[0].lower() == img_url.lower()]:
                         ann = {}
                         ann['id'] = ann_idx
@@ -228,7 +208,7 @@ class DataFormatter(object):
                         ann['box3d'] = None
                         ann['box2d'] = None
                         d = ast.literal_eval(annotation[5])
-        
+
                         if d:
                             if float(d['x']) < 0.0:
                                 d['x'] = 0.0
@@ -238,14 +218,14 @@ class DataFormatter(object):
                                 d['height'] = 1.0
 
                             if float(d['width']) <= 0.0:
-                                d['width'] = 1.0   
-                
+                                d['width'] = 1.0
+
                             ann['box2d'] = {'x1': d['x'],
                                             'x2': d['x'] + d['width'],
                                             'y1': d['y'],
                                             'y2': d['y'] + d['height']}
-                        
-                        
+
+
                         cls = ast.literal_eval(annotation[6])
                         cat = None
                         if cls:
@@ -272,23 +252,39 @@ class DataFormatter(object):
                             continue
                         else: # Verify category exists
                             ann['category'] =  ids2cats[cats2ids[cat]]
-                            
-                        
+
+
                         img['labels'].append(ann)
                         ann_idx += 1
                     self._annotations[img_prefix+fname].extend(img['labels'])
-                        
-                        
+
+
             # Save object to picklefile
             pickle_dict = {'images':self._images,'annotations':self._annotations}
             with open(self._pickle_file,"wb") as pickle_out:
-                pickle.dump(pickle_dict, pickle_out)            
-            
+                pickle.dump(pickle_dict, pickle_out)
+
         print(len(self._images))
-    
+
+    def maybe_download(self, source_url, destination):
+        if not os.path.exists(destination):
+            if os.path.exists(source_url):
+                print('Copying file', source_url, 'to file:', destination)
+                shutil.copyfile(source_url, destination)
+            else:
+                destination, _ = urllib.request.urlretrieve(source_url, destination)
+                statinfo = os.stat(destination)
+        return destination
+
+    def get_cache(self, pickle):
+        self._pickle_file = pickle_file
+        pickle_in = open(self._pickle_file,"rb")
+        pickle_dict = pickle.load(pickle_in)
+        return (pickle_dict['images'],pickle_dict['annotations'])
+
     def send_to_s3(self, img_path):
         s3_path = os.path.join(self.s3_bucket,os.path.split(img_path)[-1])
-        
+
         if self.check_s3:
             exists = subprocess.call("aws s3 ls {}".format(s3_path))
             if not exists:
