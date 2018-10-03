@@ -38,9 +38,9 @@ class Format(Enum):
 ##########  ############
 
 BASE_DIR = '/media/dean/datastore1/datasets/BerkeleyDeepDrive/'
-IMAGE_LIST_DIR = os.path.join(BASE_DIR, 'bdd100k/images/100k/train/image_list.yml')
-LABEL_LIST_DIR = os.path.join(BASE_DIR, 'bdd100k/labels/bdd100k_labels_images_train.json')
-TRAINING_DIRECTORY = os.path.join('/media/dean/datastore1/datasets/darknet/data/coco/images/train2014')
+BDD100K_DIRECTORY = os.path.join(BASE_DIR, 'bdd100k')
+IMAGE_LIST_DIR = os.path.join(BDD100K_DIRECTORY, 'images/100k/train/image_list.yml')
+LABEL_LIST_DIR = os.path.join(BDD100K_DIRECTORY, 'labels/bdd100k_labels_images_train.json')
 DEFAULT_IMG_EXTENSION = '.jpg'
 
 
@@ -53,8 +53,6 @@ class DataFormatter(object):
         self.output_path = output_path
         self.trainer_prefix = trainer_prefix
         self.coco_directory = os.path.join(self.output_path, 'coco')
-        BDD100K_ANNOTATIONS_FILE = os.path.join(self.coco_directory,'annotations/bdd100k_altered_instances_train2014.json')
-        BDD100K_VIDEOS_PATH='https://s3-us-west-2.amazonaws.com/kache-scalabel/bdd100k/videos/train/'
 
         # Check if pickle_file is None or does not exist
         if pickle_file and os.path.exists(pickle_file):
@@ -100,10 +98,12 @@ class DataFormatter(object):
 
             ###------------------ BDD100K Data Handler -----------------------###
             elif data_format == Format.bdd:
+                BDD100K_ANNOTATIONS_FILE = os.path.join(self.coco_directory,'annotations/bdd100k_altered_instances_train2014.json')
+                BDD100K_VIDEOS_PATH='https://s3-us-west-2.amazonaws.com/kache-scalabel/bdd100k/videos/train/'
                 with open(annotations_list, 'r') as f:
                     data = json.load(f)
                     ann_idx = 0
-                    for img_label in data:
+                    for idx, img_label in enumerate(data):
                         img_key = self.trainer_prefix+img_label['name']
                         img_uri = self.maybe_download(os.path.join(BDD100K_DIRECTORY, 'images/100k/train', img_label['name']),
                                                         os.path.join(self.output_path , img_key))
@@ -113,7 +113,7 @@ class DataFormatter(object):
                         width, height = im.size
 
                         if img_label.get('attributes', None):
-                            self._images[img_key] = {'url': img_uri, 'name': img_uri, 'coco_path': full_path,
+                            self._images[img_key] = {'url': img_uri, 'name': img_uri, 'coco_path': os.path.join(self.coco_directory, 'images' , self.trainer_prefix.split('_')[1], img_key),
                                                               'width': width, 'height': height, 'labels': [],
                                                               'index': idx, 'timestamp': 10000,
                                                               'videoName': BDD100K_VIDEOS_PATH+"{}.mov".format(os.path.splitext(img_label['name'])[0]),
@@ -157,7 +157,7 @@ class DataFormatter(object):
 
                             self._images[img_key]['labels'].append(label)
                             ann_idx +=1
-                        self._annotations[img_key].extend(img_data['labels'])
+                        self._annotations[img_key].extend(self._images[img_key]['labels'])
 
 
             ###------------------ VGG Data Handler-(Legacy Labeler) -----------------------###
