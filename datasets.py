@@ -121,7 +121,7 @@ class DataFormatter(object):
                                                                              'scene': img_label['attributes']['scene'],
                                                                              'timeofday': img_label['attributes']['timeofday']}}
                         else:
-                            self._images[img_key] = {'url': img_uri, 'name': img_uri, 'coco_path': full_path,
+                            self._images[img_key] = {'url': img_uri, 'name': img_uri, 'coco_path': os.path.join(self.coco_directory, 'images' , self.trainer_prefix.split('_')[1], img_key),
                                                               'width': width, 'height': height, 'labels': [],
                                                               'index': idx, 'timestamp': 10000,
                                                               'videoName': BDD100K_VIDEOS_PATH+"{}.mov".format(os.path.splitext(img_label['name'])[0])}
@@ -266,13 +266,13 @@ class DataFormatter(object):
 
         print(len(self._images))
 
-    def maybe_download(self, source_url, destination):
+    def maybe_download(self, source_uri, destination):
         if not os.path.exists(destination):
-            if os.path.exists(source_url):
-                print('Copying file', source_url, 'to file:', destination)
-                shutil.copyfile(source_url, destination)
+            if os.path.exists(source_uri):
+                #print('Copying file', source_uri, 'to file:', destination)
+                shutil.copyfile(source_uri, destination)
             else:
-                destination, _ = urllib.request.urlretrieve(source_url, destination)
+                destination, _ = urllib.request.urlretrieve(source_uri, destination)
                 statinfo = os.stat(destination)
         return destination
 
