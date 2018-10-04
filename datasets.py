@@ -46,7 +46,7 @@ DEFAULT_IMG_EXTENSION = '.jpg'
 
 
 class DataFormatter(object):
-    def __init__(self, annotations_list, s3_bucket = None, check_s3 = False, data_format=Format.scalabel, output_path=os.getcwd(), pickle_file = None, trainer_prefix = None):
+    def __init__(self, annotations_list, s3_bucket = None, check_s3 = False, data_format=Format.scalabel, output_path=os.getcwd(), pickle_file = None, trainer_prefix = None, coco_annotations_file = None, darknet_manifast = None):
         self._images = {}
         self._annotations = {}
         self.s3_bucket = s3_bucket
@@ -55,6 +55,9 @@ class DataFormatter(object):
         self.trainer_prefix = trainer_prefix
         os.makedirs(os.path.join(self.output_path, 'coco'), 0o755 , exist_ok = True )
         self.coco_directory = os.path.join(self.output_path, 'coco')
+        self.coco_images_dir = os.path.join(self.coco_directory, 'images/')
+        self.coco_annotations_file = coco_annotations_file
+        self.darknet_manifast = None
 
         # Check if pickle_file is None or does not exist
         if pickle_file and os.path.exists(pickle_file):
@@ -114,7 +117,7 @@ class DataFormatter(object):
 
 
                         if img_label.get('attributes', None):
-                            self._images[img_key] = {'url': img_uri, 'name': img_uri, 'coco_path': os.path.join(self.coco_directory, 'images' , self.trainer_prefix.split('_')[1], img_key),
+                            self._images[img_key] = {'url': img_uri, 'name': img_uri, 'coco_path': os.path.join(self.coco_images_dir, self.trainer_prefix.split('_')[1], img_key),
                                                               'width': width, 'height': height, 'labels': [],
                                                               'index': idx, 'timestamp': 10000,
                                                               'videoName': BDD100K_VIDEOS_PATH+"{}.mov".format(os.path.splitext(img_label['name'])[0]),
@@ -122,7 +125,7 @@ class DataFormatter(object):
                                                                              'scene': img_label['attributes']['scene'],
                                                                              'timeofday': img_label['attributes']['timeofday']}}
                         else:
-                            self._images[img_key] = {'url': img_uri, 'name': img_uri, 'coco_path': os.path.join(self.coco_directory, 'images' , self.trainer_prefix.split('_')[1], img_key),
+                            self._images[img_key] = {'url': img_uri, 'name': img_uri, 'coco_path': os.path.join(self.coco_images_dir, self.trainer_prefix.split('_')[1], img_key),
                                                               'width': width, 'height': height, 'labels': [],
                                                               'index': idx, 'timestamp': 10000,
                                                               'videoName': BDD100K_VIDEOS_PATH+"{}.mov".format(os.path.splitext(img_label['name'])[0])}
@@ -296,7 +299,8 @@ class DataFormatter(object):
 
     def generate_names_cfg(self):
         self.config_dir = os.path.join(os.path.split(self.output_path)[0], 'cfg')
-        with open(os.path.join(self.config_dir, self.trainer_prefix+'.names'), 'w+') as writer:
+        self.names_config = os.path.join(self.config_dir, self.trainer_prefix+'.names')
+        with open(self.names_config, 'w+') as writer:
             for category in set(self.category_names):
                 writer.write(category+'\n')
 
@@ -309,12 +313,13 @@ class DataFormatter(object):
             width, height = self._images[fname]['width'], self._images[fname]['height']
 
             if not fname.startswith(self.trainer_prefix):
-                fname = img_prefix+fname
+                fname = self.trainer_prefix+fname
             dic = {'file_name': fname, 'id': img_offset+img_id, 'height': height, 'width': width}
             images.append(dic)
 
             # xy coords: [xstart, ystart, xstop, ystop] -> bbox = [x,y,width,height]
-            for annotation in [x for x in self._annotations[fname] if x['category'] in self.coco_categories]:
+            for annotation in [x for x in self._annotations[fname] if x['category'] in self.category_names]:
+
                 bbox = annotation['box2d']
 
                 if bbox:
@@ -348,7 +353,7 @@ class DataFormatter(object):
                         'segmentation': segmentations,
                         'iscrowd': 0,
                         'image_id': img_offset+img_id, # Don't want to conflict with existing dataset
-                        'category_id': cats2ids[annotation['category']],
+                        'category_id': self.cats2ids[annotation['category']],
                         'id': ann_index,
                         'bbox': bbox,
                         'area': area
@@ -376,6 +381,7 @@ class DataFormatter(object):
 
 
         coco_anns, coco_imgs = self.convert_anns_to_coco()
+        print('Length of Coco Annotations:', len(coco_anns))
 
 
 
@@ -418,7 +424,7 @@ class DataFormatter(object):
             }
         ]
 
-        coco_output = {'info': INFO, 'licenses': LICENSES, 'images': coco_imgs, 'annotations':coco_anns, 'categories': self.coco_categories}
+        coco_output = {'info': INFO, 'licenses': LICENSES, 'images': coco_imgs, 'annotations': coco_anns, 'categories': self.coco_categories}
         os.makedirs(os.path.join(self.coco_directory, 'annotations'), exist_ok = True)
         self.coco_annotations_file = os.path.join(self.coco_directory, 'annotations', '{}_annotations.json'.format(self.trainer_prefix))
         with open(self.coco_annotations_file, 'w+') as output_json_file:
@@ -426,14 +432,42 @@ class DataFormatter(object):
 
 
 
+    def convert_coco_to_yolo(self):
+        darknet_conversion_results = os.path.join(self.coco_labels_dir,'convert2yolo_results.txt')
+        par_path = os.path.abspath(os.path.join(self.output_path, os.pardir))
+        par_path = os.path.abspath(os.path.join(par_path, os.pardir))
+        par_path = os.path.abspath(os.path.join(par_path, os.pardir))
+        yolo_converter = os.path.join(os.path.abspath(par_path), 'convert2Yolo/example.py')
+
+        os.makedirs(os.path.abspath(os.path.join(darknet_conversion_results, os.pardir)), exist_ok = True)
+        coco2yolo = "python3 {} --datasets COCO --img_path \"{}\" --label \"{}\" --convert_output_path \"{}\" --img_type \".jpg\" --manipast_path {} --cls_list_file {} | tee -a  {}".format(
+                            yolo_converter, self.coco_images_dir, self.coco_annotations_file,
+                            self.coco_labels_dir, self.darknet_manifast, self.names_config,
+                            darknet_conversion_results)
+        res = os.system(coco2yolo)
+
+
     def export(self, format = Format.coco):
         if format == Format.coco:
-            self.generate_coco_annotations()
-            self.generate_names_cfg()
+            if not self.coco_annotations_file or not os.path.exists(self.coco_annotations_file):
+                self.generate_coco_annotations()
+                self.generate_names_cfg()
+
+        elif format == Format.darknet:
+            if not self.coco_annotations_file or not os.path.exists(self.coco_annotations_file):
+                # Convert to coco first
+                self.export(format = Format.coco)
+
+                # Create coco labels directory
+                if not self.darknet_manifast or not os.path.exists(self.darknet_manifast):
+                    self.coco_labels_dir = os.path.join(self.coco_directory, 'labels', self.trainer_prefix.split('_')[1])
+                    os.makedirs(self.coco_labels_dir, exist_ok = True)
+                    self.darknet_manifast = os.path.join(self.coco_labels_dir, 'manifast.txt')
+                    self.convert_coco_to_yolo()
 
         elif format == Format.scalabel or format == Format.bdd:
             os.makedirs(os.path.join(self.output_path, 'bdd100k', 'annotations'), 0o755 , exist_ok = True )
             self.bdd100k_annotations = os.path.join(self.output_path, 'bdd100k', 'annotations/bdd100k_altered_annotations.json')
             with open(self.bdd100k_annotations, "w+") as output_json_file:
-                imgs_list = list(self._images.values())[:100]
+                imgs_list = list(self._images.values())
                 json.dump(imgs_list, output_json_file)
