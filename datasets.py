@@ -57,7 +57,7 @@ class DataFormatter(object):
         self.coco_directory = os.path.join(self.output_path, 'coco')
         self.coco_images_dir = os.path.join(self.coco_directory, 'images/')
         self.coco_annotations_file = coco_annotations_file
-        self.darknet_manifast = None
+        self.darknet_manifast = darknet_manifast
 
         # Check if pickle_file is None or does not exist
         if pickle_file and os.path.exists(pickle_file):
@@ -462,7 +462,8 @@ class DataFormatter(object):
                 if not self.darknet_manifast or not os.path.exists(self.darknet_manifast):
                     self.coco_labels_dir = os.path.join(self.coco_directory, 'labels', self.trainer_prefix.split('_')[1])
                     os.makedirs(self.coco_labels_dir, exist_ok = True)
-                    self.darknet_manifast = os.path.join(self.coco_labels_dir, 'manifast.txt')
+                    #self.darknet_manifast = os.path.join(self.coco_labels_dir, 'manifast.txt')
+                    self.darknet_manifast = os.path.join(self.coco_labels_dir)
                     self.convert_coco_to_yolo()
 
         elif format == Format.scalabel or format == Format.bdd:
