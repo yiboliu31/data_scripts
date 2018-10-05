@@ -25,6 +25,9 @@ import pickle
 import pandas as pd
 import subprocess
 from datetime import datetime
+import urllib
+import subprocess
+import pprint
 
 
 class Format(Enum):
@@ -40,13 +43,12 @@ class Format(Enum):
 
 BASE_DIR = '/media/dean/datastore1/datasets/BerkeleyDeepDrive/'
 BDD100K_DIRECTORY = os.path.join(BASE_DIR, 'bdd100k')
-IMAGE_LIST_DIR = os.path.join(BDD100K_DIRECTORY, 'images/100k/train/image_list.yml')
-LABEL_LIST_DIR = os.path.join(BDD100K_DIRECTORY, 'labels/bdd100k_labels_images_train.json')
 DEFAULT_IMG_EXTENSION = '.jpg'
 
 
 class DataFormatter(object):
-    def __init__(self, annotations_list, s3_bucket = None, check_s3 = False, data_format=Format.scalabel, output_path=os.getcwd(), pickle_file = None, trainer_prefix = None, coco_annotations_file = None, darknet_manifast = None):
+    def __init__(self, annotations_list, s3_bucket = None, check_s3 = False, input_format=Format.scalabel, output_path=os.getcwd(), pickle_file = None, trainer_prefix = None, coco_annotations_file = None, darknet_manifast = None):
+        self.input_format = input_format
         self._images = {}
         self._annotations = {}
         self.s3_bucket = s3_bucket
@@ -55,20 +57,21 @@ class DataFormatter(object):
         self.trainer_prefix = trainer_prefix
         os.makedirs(os.path.join(self.output_path, 'coco'), 0o755 , exist_ok = True )
         self.coco_directory = os.path.join(self.output_path, 'coco')
-        self.coco_images_dir = os.path.join(self.coco_directory, 'images/')
+        self.coco_images_dir = os.path.join(self.coco_directory, 'images', self.trainer_prefix.split('_')[1])
         self.coco_annotations_file = coco_annotations_file
         self.darknet_manifast = darknet_manifast
+        self.config_dir = os.path.join(os.path.split(self.output_path)[0], 'cfg')
+        os.makedirs(self.config_dir, exist_ok = True)
 
-        # Check if pickle_file is None or does not exist
-        if pickle_file and os.path.exists(pickle_file):
-            self._images, self._annotations = self.get_cache(pickle_file)
+        # Check if pickle_file is None or does not exist\
+        path = os.path.normpath(annotations_list)
+        self._pickle_file = "{}.pickle".format('_'.join(path.split(os.sep)[5:]))
+
+        if self._pickle_file and os.path.exists(self._pickle_file):
+            self._images, self._annotations = self.get_cache(self._pickle_file)
         else:
-            path = os.path.normpath(annotations_list)
-            self._pickle_file = "{}.pickle".format('_'.join(path.split(os.sep)[5:]))
-
-
             ###------------------ Scalabel Data Handler -----------------------###
-            if data_format == Format.scalabel:
+            if self.input_format == Format.scalabel:
                 with open(image_list, 'r') as stream:
                     image_data = yaml.load(stream)
                     if image_data:
@@ -102,14 +105,22 @@ class DataFormatter(object):
 
 
             ###------------------ BDD100K Data Handler -----------------------###
-            elif data_format == Format.bdd:
+            elif self.input_format == Format.bdd:
                 BDD100K_VIDEOS_PATH='https://s3-us-west-2.amazonaws.com/kache-scalabel/bdd100k/videos/train/'
                 with open(annotations_list, 'r') as f:
                     data = json.load(f)
                     ann_idx = 0
                     for idx, img_label in enumerate(data):
-                        img_key = self.trainer_prefix+img_label['name']
-                        img_uri = self.maybe_download(os.path.join(BDD100K_DIRECTORY, 'images/100k/train', img_label['name']),
+                        img_label_name = img_label['name']
+                        if urllib.parse.urlparse(img_label_name).scheme != "" or os.path.isabs(img_label['name']):
+                            img_label_name = os.path.split(img_label['name'])[-1]
+                        elif not os.path.isabs(img_label['name']):
+                            img_label_name = os.path.join(BDD100K_DIRECTORY, 'images/100k/val', img_label['name'])
+
+                        img_key = self.trainer_prefix+img_label_name
+                        #img_uri = self.maybe_download(os.path.join(BDD100K_DIRECTORY, 'images/100k/train', img_label['name']),
+                        #                                os.path.join(self.coco_directory, 'images' , self.trainer_prefix.split('_')[1], img_key))
+                        img_uri = self.maybe_download(img_label_name,
                                                         os.path.join(self.coco_directory, 'images' , self.trainer_prefix.split('_')[1], img_key))
                         im = Image.open(img_uri)
                         width, height = im.size
@@ -131,7 +142,7 @@ class DataFormatter(object):
                                                               'videoName': BDD100K_VIDEOS_PATH+"{}.mov".format(os.path.splitext(img_label['name'])[0])}
 
                         self._annotations[img_key] = []
-                        for ann in [l for l in img_label['labels'] if l.get('box2d', None)]:
+                        for ann in [l for l in img_label['labels']]:
                             label = {}
                             label['id'] = int(ann_idx)
                             label['attributes'] = ann.get('attributes', None)
@@ -144,28 +155,33 @@ class DataFormatter(object):
                             label['manualAttributes'] = ann.get('manualAttributes', True)
                             label['poly2d'] = ann.get('poly2d', None)
                             label['box3d'] = ann.get('box3d', None)
+                            label['box2d'] = ann.get('box2d', None)
 
-                            label['box2d'] = {'x1': ann['box2d']['x1'],
-                                        'x2': ann['box2d']['x2'],
-                                        'y1': ann['box2d']['y1'],
-                                        'y2': ann['box2d']['y2']}
+                            if label['box2d']:
+                                assert (label['box2d']['x1'] == ann['box2d']['x1']), "Mismatch: {}--{}".format(label['box2d']['x1'], ann['box2d']['x1'])
+                                assert (label['box2d']['x2'] == ann['box2d']['x2']), "Mismatch: {}--{}".format(label['box2d']['x2'], ann['box2d']['x2'])
+                                assert (label['box2d']['y1'] == ann['box2d']['y1']), "Mismatch: {}--{}".format(label['box2d']['y1'], ann['box2d']['y1'])
+                                assert (label['box2d']['y2'] == ann['box2d']['y2']), "Mismatch: {}--{}".format(label['box2d']['y2'], ann['box2d']['y2'])
 
                             label['category'] = ann['category']
                             if label['category'] == 'traffic light':
-                                if ann['attributes']['trafficLightColor'] == 'green':
-                                    label['attributes']['Traffic Light Color'] = [1, 'G']
-                                elif ann['attributes']['trafficLightColor'] == 'yellow':
-                                    label['attributes']['Traffic Light Color'] = [2, 'Y']
-                                elif ann['attributes']['trafficLightColor'] == 'red':
-                                    label['attributes']['Traffic Light Color'] = [3, 'R']
-
+                                if ann['attributes'].get('trafficLightColor', None):
+                                    if ann['attributes']['trafficLightColor'] == 'green':
+                                        label['attributes']['Traffic Light Color'] = [1, 'G']
+                                    elif ann['attributes']['trafficLightColor'] == 'yellow':
+                                        label['attributes']['Traffic Light Color'] = [2, 'Y']
+                                    elif ann['attributes']['trafficLightColor'] == 'red':
+                                        label['attributes']['Traffic Light Color'] = [3, 'R']
+                                else:
+                                    ann['attributes']['Traffic Light Color'] == label['attributes']['Traffic Light Color']
                             self._images[img_key]['labels'].append(label)
                             ann_idx +=1
                         self._annotations[img_key].extend(self._images[img_key]['labels'])
+                        print('Idx', idx)
 
 
             ###------------------ VGG Data Handler-(Legacy Labeler) -----------------------###
-            elif data_format == Format.vgg:
+            elif self.input_format == Format.vgg:
                 HEADER_ROW=['filename', 'file_size', 'file_attributes', 'region_count',
                             'region_id', 'region_shape_attributes', 'region_attributes']
                 vgg_annotations = pd.read_csv(annotations_list, names=HEADER_ROW, skiprows=1)
@@ -173,9 +189,10 @@ class DataFormatter(object):
                 num_imgs = len(img_paths)
                 ann_idx = 0
 
+                ## Verify Labels ##
+
                 # loop through each image
                 urlstofilepaths = {}
-                img = {}
                 start_idx = int(1e6)
                 for idx, img_url in enumerate(img_paths, start=start_idx):
                     img = {}
@@ -264,10 +281,11 @@ class DataFormatter(object):
 
             # Save object to picklefile
             pickle_dict = {'images':self._images,'annotations':self._annotations}
+            print('Saving to Pickle File:', self._pickle_file)
             with open(self._pickle_file,"wb") as pickle_out:
                 pickle.dump(pickle_dict, pickle_out)
 
-        print(len(self._images))
+        print('Length of COCO Images', len(self._images))
 
     def maybe_download(self, source_uri, destination):
         if not os.path.exists(destination):
@@ -275,12 +293,16 @@ class DataFormatter(object):
                 #print('Copying file', source_uri, 'to file:', destination)
                 os.makedirs(os.path.split(destination)[0], exist_ok = True)
                 shutil.copyfile(source_uri, destination)
-            else:
+            elif urllib.parse.urlparse(source_uri).scheme != "":
                 destination, _ = urllib.request.urlretrieve(source_uri, destination)
                 statinfo = os.stat(destination)
+            else:
+                print('Could not copy file', source_uri, 'to file:', destination, '. Does not exist')
+
+
         return destination
 
-    def get_cache(self, pickle):
+    def get_cache(self, pickle_file):
         self._pickle_file = pickle_file
         pickle_in = open(self._pickle_file,"rb")
         pickle_dict = pickle.load(pickle_in)
@@ -298,7 +320,6 @@ class DataFormatter(object):
         return os.path.join('https://s3-us-west-2.amazonaws.com', s3_path)
 
     def generate_names_cfg(self):
-        self.config_dir = os.path.join(os.path.split(self.output_path)[0], 'cfg')
         self.names_config = os.path.join(self.config_dir, self.trainer_prefix+'.names')
         with open(self.names_config, 'w+') as writer:
             for category in set(self.category_names):
@@ -306,34 +327,27 @@ class DataFormatter(object):
 
     def convert_anns_to_coco(self):
         images, anns = [], []
-        img_offset, ann_index = 10000001, 100000000
-        num_imgs = len(self._annotations.keys())
+        start_idx, ann_index = int(1e7), int(1e7)
+        self.num_imgs = len(self._annotations.keys())
 
-        for img_id, fname in enumerate(self._annotations.keys()):
+        for img_id, fname in enumerate(self._annotations.keys(), start=start_idx):
             width, height = self._images[fname]['width'], self._images[fname]['height']
 
             if not fname.startswith(self.trainer_prefix):
                 fname = self.trainer_prefix+fname
-            dic = {'file_name': fname, 'id': img_offset+img_id, 'height': height, 'width': width}
+            dic = {'file_name': fname, 'id': img_id, 'height': height, 'width': width}
             images.append(dic)
 
-            # xy coords: [xstart, ystart, xstop, ystop] -> bbox = [x,y,width,height]
-            for annotation in [x for x in self._annotations[fname] if x['category'] in self.category_names]:
-
+            for annotation in [x for x in self._annotations[fname] if x['category'] in self.category_names and x['box2d']]:
                 bbox = annotation['box2d']
 
                 if bbox:
-                    # xy coords: [xstart, ystart, xstop, ystop] -> bbox = [x,y,width,height]
                     xstart, ystart, xstop, ystop = float(bbox['x1']),float(bbox['y1']),float(bbox['x2']),float(bbox['y2'])
 
-                    if xstart < 0:
-                        xstart = 0.0
-                    if ystart < 0:
-                        ystart = 0.0
-                    if ystop <= 0:
-                        ystop = 3.0
-                    if xstop <= 0:
-                        xstop = 3.0
+                    if xstart < 0: xstart = 0.0
+                    if ystart < 0: ystart = 0.0
+                    if ystop <= 0: ystop = 3.0
+                    if xstop <= 0: xstop = 3.0
 
                     # Get Points from Bounding Box
                     pts = []
@@ -352,7 +366,7 @@ class DataFormatter(object):
                     annotation = {
                         'segmentation': segmentations,
                         'iscrowd': 0,
-                        'image_id': img_offset+img_id, # Don't want to conflict with existing dataset
+                        'image_id': img_id,
                         'category_id': self.cats2ids[annotation['category']],
                         'id': ann_index,
                         'bbox': bbox,
@@ -431,20 +445,37 @@ class DataFormatter(object):
             json.dump(coco_output, output_json_file)
 
 
+    def parse_nvidia_smi(self):
+
+        sp = subprocess.Popen(['nvidia-smi', '-q'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        out_str = sp.communicate()
+        out_list = out_str[0].decode("utf-8").split('\n')
+        out_dict = {}
+
+        for item in out_list:
+            try:
+                key, val = item.split(':')
+                key, val = key.strip(), val.strip()
+                out_dict[key] = val
+            except:
+                pass
+
+        return out_dict
+
 
     def convert_coco_to_yolo(self):
         darknet_conversion_results = os.path.join(self.coco_labels_dir,'convert2yolo_results.txt')
-        par_path = os.path.abspath(os.path.join(self.output_path, os.pardir))
-        par_path = os.path.abspath(os.path.join(par_path, os.pardir))
-        par_path = os.path.abspath(os.path.join(par_path, os.pardir))
+        par_path = os.path.abspath(os.path.join(self.output_path, os.pardir, os.pardir, os.pardir))
         yolo_converter = os.path.join(os.path.abspath(par_path), 'convert2Yolo/example.py')
 
         os.makedirs(os.path.abspath(os.path.join(darknet_conversion_results, os.pardir)), exist_ok = True)
-        coco2yolo = "python3 {} --datasets COCO --img_path \"{}\" --label \"{}\" --convert_output_path \"{}\" --img_type \".jpg\" --manipast_path {} --cls_list_file {} | tee -a  {}".format(
-                            yolo_converter, self.coco_images_dir, self.coco_annotations_file,
-                            self.coco_labels_dir, self.darknet_manifast, self.names_config,
-                            darknet_conversion_results)
-        res = os.system(coco2yolo)
+        if not os.path.exists(darknet_conversion_results):
+            coco2yolo = "python3 {} --datasets COCO --img_path \"{}\" --label \"{}\" --convert_output_path \"{}\" --img_type \"{}\" --manipast_path {} --cls_list_file {} | tee -a  {}".format(
+                                yolo_converter, self.coco_images_dir, self.coco_annotations_file,
+                                self.coco_labels_dir, DEFAULT_IMG_EXTENSION, self.darknet_manifast, self.names_config,
+                                darknet_conversion_results)
+            print('Converting annotations into Darknet format. Directory:',self.coco_labels_dir)
+            res = os.system(coco2yolo)
 
 
     def export(self, format = Format.coco):
@@ -455,14 +486,12 @@ class DataFormatter(object):
 
         elif format == Format.darknet:
             if not self.coco_annotations_file or not os.path.exists(self.coco_annotations_file):
-                # Convert to coco first
+                # Convert to COCO first, since Darknet expects it
                 self.export(format = Format.coco)
 
-                # Create coco labels directory
                 if not self.darknet_manifast or not os.path.exists(self.darknet_manifast):
                     self.coco_labels_dir = os.path.join(self.coco_directory, 'labels', self.trainer_prefix.split('_')[1])
                     os.makedirs(self.coco_labels_dir, exist_ok = True)
-                    #self.darknet_manifast = os.path.join(self.coco_labels_dir, 'manifast.txt')
                     self.darknet_manifast = os.path.join(self.coco_labels_dir)
                     self.convert_coco_to_yolo()
 
