@@ -28,6 +28,8 @@ from datetime import datetime
 import urllib
 import subprocess
 import pprint
+import ntpath
+
 
 
 class Format(Enum):
@@ -117,7 +119,7 @@ class DataFormatter(object):
                         elif not os.path.isabs(img_label['name']):
                             img_label_name = os.path.join(BDD100K_DIRECTORY, 'images/100k/val', img_label['name'])
 
-                        img_key = self.trainer_prefix+img_label_name
+                        img_key = self.trainer_prefix+img_label['name']
                         #img_uri = self.maybe_download(os.path.join(BDD100K_DIRECTORY, 'images/100k/train', img_label['name']),
                         #                                os.path.join(self.coco_directory, 'images' , self.trainer_prefix.split('_')[1], img_key))
                         img_uri = self.maybe_download(img_label_name,
@@ -177,7 +179,6 @@ class DataFormatter(object):
                             self._images[img_key]['labels'].append(label)
                             ann_idx +=1
                         self._annotations[img_key].extend(self._images[img_key]['labels'])
-                        print('Idx', idx)
 
 
             ###------------------ VGG Data Handler-(Legacy Labeler) -----------------------###
@@ -325,6 +326,11 @@ class DataFormatter(object):
             for category in set(self.category_names):
                 writer.write(category+'\n')
 
+    def path_leaf(self, path):
+        head, tail = ntpath.split(path)
+        return tail or ntpath.basename(head)
+
+
     def convert_anns_to_coco(self):
         images, anns = [], []
         start_idx, ann_index = int(1e7), int(1e7)
@@ -332,7 +338,7 @@ class DataFormatter(object):
 
         for img_id, fname in enumerate(self._annotations.keys(), start=start_idx):
             width, height = self._images[fname]['width'], self._images[fname]['height']
-
+            fname = self.path_leaf(fname)
             if not fname.startswith(self.trainer_prefix):
                 fname = self.trainer_prefix+fname
             dic = {'file_name': fname, 'id': img_id, 'height': height, 'width': width}
@@ -472,9 +478,11 @@ class DataFormatter(object):
         if not os.path.exists(darknet_conversion_results):
             coco2yolo = "python3 {} --datasets COCO --img_path \"{}\" --label \"{}\" --convert_output_path \"{}\" --img_type \"{}\" --manipast_path {} --cls_list_file {} | tee -a  {}".format(
                                 yolo_converter, self.coco_images_dir, self.coco_annotations_file,
-                                self.coco_labels_dir, DEFAULT_IMG_EXTENSION, self.darknet_manifast, self.names_config,
+                                self.coco_labels_dir, DEFAULT_IMG_EXTENSION, os.path.split(self.darknet_manifast)[0], self.names_config,
                                 darknet_conversion_results)
+
             print('Converting annotations into Darknet format. Directory:',self.coco_labels_dir)
+            print('Coco to Yolo command:', coco2yolo)
             res = os.system(coco2yolo)
 
 
@@ -490,9 +498,9 @@ class DataFormatter(object):
                 self.export(format = Format.coco)
 
                 if not self.darknet_manifast or not os.path.exists(self.darknet_manifast):
-                    self.coco_labels_dir = os.path.join(self.coco_directory, 'labels', self.trainer_prefix.split('_')[1])
+                    self.coco_labels_dir = os.path.join(self.coco_directory, 'labels', self.trainer_prefix.split('_')[1]+'/')
                     os.makedirs(self.coco_labels_dir, exist_ok = True)
-                    self.darknet_manifast = os.path.join(self.coco_labels_dir)
+                    self.darknet_manifast = os.path.join(self.coco_labels_dir, 'manifast.txt')
                     self.convert_coco_to_yolo()
 
         elif format == Format.scalabel or format == Format.bdd:
