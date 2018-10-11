@@ -47,9 +47,9 @@ BASE_DIR = '/media/dean/datastore1/datasets/BerkeleyDeepDrive/'
 BDD100K_DIRECTORY = os.path.join(BASE_DIR, 'bdd100k')
 DEFAULT_IMG_EXTENSION = '.jpg'
 
-
 class DataFormatter(object):
     def __init__(self, annotations_list, s3_bucket = None, check_s3 = False, input_format=Format.scalabel, output_path=os.getcwd(), pickle_file = None, trainer_prefix = None, coco_annotations_file = None, darknet_manifast = None):
+
         self.input_format = input_format
         self._images = {}
         self._annotations = {}
@@ -105,6 +105,68 @@ class DataFormatter(object):
 
                         self._images[img_prefix+fname] = img_data
 
+            ###------------------ MS COCO Data Handler -----------------------###
+            if self.input_format == Format.coco:
+                with open(annotations_list, 'r') as f:
+                    data = json.load(f)
+
+
+                    annotated_img_idxs = [int(annotation['image_id']) for annotation in data['annotations']]
+                    # Add Existing Coco Images
+                    imgs = data['images']
+                    imgs_list = [(x['id'], x) for x in imgs if int(x['id']) in annotated_img_idxs]
+
+                    uris2paths = {}
+                    uris = set([(idx, x['file_name']) for idx, x in imgs_list])
+
+                    for idx, uri in uris:
+                        fname = os.path.split(uri)[-1]
+                        img_key, uris2paths[uri] = self.load_training_img_uri(uri)
+
+
+                        im = Image.open(uris2paths[uri])
+                        width, height = im.size
+                        if self.s3_bucket: s3uri = self.send_to_s3(uri)
+
+
+                        self._images[img_key] = {'url': s3uri, 'name': s3uri, 'coco_path': uris2paths[uri],
+                                                          'width': width, 'height': height, 'labels': [],
+                                                          'index': idx, 'timestamp': 10000,
+                                                          'videoName': '',
+                                                          'attributes': {'weather': None,
+                                                                         'scene': None,
+                                                                         'timeofday': None}}
+                        self._annotations[img_key] = []
+                        for ann in [l for l in data['annotations'] if int(l['id']) == idx]:
+                            label = {}
+                            label['id'] = ann['id']
+                            label['attributes'] = {'Occluded':False,
+                                                   'Truncated': False,
+                                                   'Traffic Light Color': [0, 'NA']}
+
+                            label['manual'] = True
+                            label['manualAttributes'] = True
+
+                            # Get category name from COCO trainer_prefix
+
+                            coco = COCO(annotations_list)
+                            label['category'] = coco.loadCats([ann['category_id']])[0]
+
+
+                            label['box2d'] = {'x1': float(ann['x']), 'y1': float(ann['y']), 'x2': float(ann['x']+ann['width']),
+                            'y2': float(ann['y']+ ann['height'])}
+                            print(label)
+                            self._images[img_key]['labels'].append(label)
+                            ann_idx +=1
+                        self._annotations[img_key].extend(self._images[img_key]['labels'])
+
+
+
+
+
+
+
+
 
             ###------------------ BDD100K Data Handler -----------------------###
             elif self.input_format == Format.bdd:
@@ -117,13 +179,12 @@ class DataFormatter(object):
                         if urllib.parse.urlparse(img_label_name).scheme != "" or os.path.isabs(img_label['name']):
                             img_label_name = os.path.split(img_label['name'])[-1]
                         elif not os.path.isabs(img_label['name']):
-                            img_label_name = os.path.join(BDD100K_DIRECTORY, 'images/100k/val', img_label['name'])
+                            train_type = 'train'
+                            if 'val' in self.trainer_prefix and 'train' not in self.trainer_prefix:
+                                train_type  = 'val'
+                            img_label_name = os.path.join(BDD100K_DIRECTORY, 'images/100k', train_type, img_label['name'])
 
-                        img_key = self.trainer_prefix+img_label['name']
-                        #img_uri = self.maybe_download(os.path.join(BDD100K_DIRECTORY, 'images/100k/train', img_label['name']),
-                        #                                os.path.join(self.coco_directory, 'images' , self.trainer_prefix.split('_')[1], img_key))
-                        img_uri = self.maybe_download(img_label_name,
-                                                        os.path.join(self.coco_directory, 'images' , self.trainer_prefix.split('_')[1], img_key))
+                        img_key, img_uri = self.load_training_img_uri(img_label_name)
                         im = Image.open(img_uri)
                         width, height = im.size
                         if self.s3_bucket: img_uri = self.send_to_s3(img_uri.replace(trainer_prefix,''))
@@ -288,6 +349,10 @@ class DataFormatter(object):
 
         print('Length of COCO Images', len(self._images))
 
+    def merge_data(self, merging_set, merging_cats=[]):
+        self, data_files=[("my_data", ["data/data_file"])],
+
+
     def maybe_download(self, source_uri, destination):
         if not os.path.exists(destination):
             if os.path.exists(source_uri):
@@ -303,6 +368,31 @@ class DataFormatter(object):
 
         return destination
 
+
+    def load_training_img_uri(self, fname):
+        if urllib.parse.urlparse(fname).scheme != "" or os.path.isabs(fname):
+            fname = os.path.split(fname)[-1]
+        elif not os.path.isabs(fname):
+            if self.input_format == Format.bdd:
+                # source_dir = bdd100k/train
+                fname = os.path.join(BDD100K_DIRECTORY, 'images/100k/train', fname)
+                img_key = self.trainer_prefix+self.path_leaf(fname)
+            elif self.input_format == Format.coco:
+                # source_dir = coco/train
+                SOURCE_COCO_DIRECTORY =  os.path.join('/media/dean/datastore1/datasets/road_coco/darknet/data/coco/images', self.trainer_prefix.split('_')[1])
+
+
+                fname = os.path.join(SOURCE_COCO_DIRECTORY, self.path_leaf(fname))
+
+                img_key = self.path_leaf(fname)
+
+        ## Add to training_dir
+        os.makedirs(os.path.join(self.coco_directory, 'images' , self.trainer_prefix.split('_')[1]), exist_ok = True)
+        img_uri = self.maybe_download(fname,
+                                    os.path.join(self.coco_directory, 'images' , self.trainer_prefix.split('_')[1], img_key))
+
+        return img_key, img_uri
+
     def get_cache(self, pickle_file):
         self._pickle_file = pickle_file
         pickle_in = open(self._pickle_file,"rb")
@@ -310,7 +400,7 @@ class DataFormatter(object):
         return (pickle_dict['images'],pickle_dict['annotations'])
 
     def send_to_s3(self, img_path):
-        s3_path = os.path.join(self.s3_bucket,os.path.split(img_path)[-1])
+        s3_path = os.path.join(self.s3_bucket,self.path_leaf(img_path))
 
         if self.check_s3:
             exists = subprocess.call("aws s3 ls {}".format(s3_path))
@@ -327,6 +417,9 @@ class DataFormatter(object):
                 writer.write(category+'\n')
 
     def path_leaf(self, path):
+        if urllib.parse.urlparse(path).scheme != "" or os.path.isabs(path):
+            path = os.path.split(path)[-1]
+
         head, tail = ntpath.split(path)
         return tail or ntpath.basename(head)
 
