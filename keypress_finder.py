@@ -14,6 +14,8 @@ from keyboard.msg import Key
 # Key.KEY_s
 # Key.KEY_SPACE
 
+PICKLE_CACHE = os.path.join(os.getcwd(), 'pickle')
+
 
 def make_bags(directory_name, event_log):
 	"""
@@ -51,11 +53,18 @@ def make_bags(directory_name, event_log):
 
 
 
-def do_stuff(bag):
+def do_stuff(bag_full_path, bag):
 	"""
 	"""
 
 	bag_snaps = []
+	pickle_file = '{}.pickle'.format(bag_full_path.replace('/','_'))
+	pickle_out = os.path.join(PICKLE_CACHE, pickle_file)
+	
+	if os.path.exists(pickle_out):
+		pickle_in = open(pickle_out, 'rb')
+		pickle_dict = pickle.load(pickle_in)
+		return pickle_dict['bag_snaps']
 
 	for topic, msg, t in bag.read_messages():
 		if topic == '/dbw/toyota_dbw/car_state':
@@ -70,7 +79,14 @@ def do_stuff(bag):
 			 	# print('v key pressed at {}'.format(t))
 				bag_snaps.append(('V', t))
 
-	print(bag_snaps)
+	
+	
+	with open(pickle_out, 'w+') as f:
+		print(bag_snaps)
+		pickle_dict = {'bag_snaps': bag_snaps}
+		pickle.dump(pickle_dict, f)
+
+
 	return bag_snaps
 
 
@@ -91,12 +107,21 @@ if __name__ == '__main__':
 		for file_name in bag_names:
 			bag_full_path = os.path.join(top_dir,bag_dir, file_name)
 			#print('reading bag ' + bag_full_path)
-			bag = rosbag.Bag(bag_full_path)
+			try:
+				bag = rosbag.Bag(bag_full_path)
 
-			print('processing bag ' + bag_full_path)
-			bag_data[bag_full_path] = do_stuff(bag)
+				print('processing bag ' + bag_full_path)
+				
+				bag_data[bag_full_path] = do_stuff(bag_full_path, bag)
+			except rosbag.bag.ROSBagException:
+				print('Ros bag {} found to be empty'.format(bag_full_path))
+				bag_data[bag_full_path] = []
+				continue
 
-	with open('bag_snaps.pickle') as pickle_out:
-		pickle_dict = {'bag_snaps': bag_snaps}
+	with open('bag_data.pickle') as pickle_out:
+		pickle_dict = {'bag_data': bag_data}
 		pickle.dump(pickle_dict, pickle_out)
+
+
+
 
