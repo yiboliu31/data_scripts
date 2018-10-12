@@ -68,16 +68,20 @@ def do_stuff(bag_full_path, bag):
 
 	for topic, msg, t in bag.read_messages():
 		if topic == '/dbw/toyota_dbw/car_state':
-			if msg.keypressed == Key.KEY_c:
-				# print('c key pressed at {}'.format(t))
-				bag_snaps.append(('C', t))
+			try:
+				if msg.keypressed == Key.KEY_c:
+					# print('c key pressed at {}'.format(t))
+					bag_snaps.append(('C', t))
 
 		
 
 
-			if msg.keypressed == Key.KEY_v:
-			 	# print('v key pressed at {}'.format(t))
-				bag_snaps.append(('V', t))
+				if msg.keypressed == Key.KEY_v:
+				 	# print('v key pressed at {}'.format(t))
+					bag_snaps.append(('V', t))
+			except AttributeError:
+				continue
+
 
 	
 	
@@ -105,18 +109,28 @@ if __name__ == '__main__':
 		bag_names = os.listdir(os.path.join(top_dir,bag_dir))
 
 		for file_name in bag_names:
-			bag_full_path = os.path.join(top_dir,bag_dir, file_name)
-			#print('reading bag ' + bag_full_path)
-			try:
-				bag = rosbag.Bag(bag_full_path)
-
-				print('processing bag ' + bag_full_path)
-				
-				bag_data[bag_full_path] = do_stuff(bag_full_path, bag)
-			except rosbag.bag.ROSBagException:
-				print('Ros bag {} found to be empty'.format(bag_full_path))
-				bag_data[bag_full_path] = []
-				continue
+			bag_full_path = os.path.join(top_dir,bag_dir, file_name.replace(':','\:'))
+			pickle_file = '{}.pickle'.format(bag_full_path.replace('/','_'))
+			pickle_out = os.path.join(PICKLE_CACHE, pickle_file)
+	
+			if os.path.exists(pickle_out):
+				pickle_in = open(pickle_out, 'rb')
+				pickle_dict = pickle.load(pickle_in)
+				bag_data[bag_full_path] = pickle_dict['bag_snaps']
+			else:
+				#print('reading bag ' + bag_full_path)
+				try:
+					if os.path.exists(bag_full_path):
+						print('processing bag ' + bag_full_path)
+						bag = rosbag.Bag(bag_full_path)
+						bag_data[bag_full_path] = do_stuff(bag_full_path, bag)
+					else: 
+						print('Cant find {}'.format(bag_full_path))
+						continue
+				except rosbag.bag.ROSBagException:
+					print('Ros bag {} found to be empty'.format(bag_full_path))
+					bag_data[bag_full_path] = []
+					continue
 
 	with open('bag_data.pickle') as pickle_out:
 		pickle_dict = {'bag_data': bag_data}
