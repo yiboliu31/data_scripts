@@ -107,6 +107,7 @@ class DataFormatter(object):
 
             ###------------------ MS COCO Data Handler -----------------------###
             if self.input_format == Format.coco:
+                self.coco = COCO(annotations_list)
                 with open(annotations_list, 'r') as f:
                     data = json.load(f)
 
@@ -118,7 +119,7 @@ class DataFormatter(object):
 
                     uris2paths = {}
                     uris = set([(idx, x['file_name']) for idx, x in imgs_list])
-
+                    ann_idx = 0
                     for idx, uri in uris:
                         fname = os.path.split(uri)[-1]
                         img_key, uris2paths[uri] = self.load_training_img_uri(uri)
@@ -137,6 +138,7 @@ class DataFormatter(object):
                                                                          'scene': None,
                                                                          'timeofday': None}}
                         self._annotations[img_key] = []
+
                         for ann in [l for l in data['annotations'] if int(l['id']) == idx]:
                             label = {}
                             label['id'] = ann['id']
@@ -149,13 +151,13 @@ class DataFormatter(object):
 
                             # Get category name from COCO trainer_prefix
 
-                            coco = COCO(annotations_list)
-                            label['category'] = coco.loadCats([ann['category_id']])[0]
 
+                            label['category'] = self.coco.loadCats([ann['category_id']])[0]
 
-                            label['box2d'] = {'x1': float(ann['x']), 'y1': float(ann['y']), 'x2': float(ann['x']+ann['width']),
-                            'y2': float(ann['y']+ ann['height'])}
-                            print(label)
+                            label['box3d'] = None
+                            label['poly2d'] = None
+                            label['box2d'] = {'x1': float(ann['bbox'][0]), 'y1': float(ann['bbox'][1]), 'x2': float(ann['bbox'][0]+ann['bbox'][2]),
+                            'y2': float(ann['bbox'][1]+ ann['bbox'][3])}
                             self._images[img_key]['labels'].append(label)
                             ann_idx +=1
                         self._annotations[img_key].extend(self._images[img_key]['labels'])
