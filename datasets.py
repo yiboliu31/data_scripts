@@ -38,6 +38,7 @@ class Format(Enum):
     darknet = 2
     bdd = 3
     vgg = 4
+    kache = 5
 
 ##########  ############
 ##      Refactor      ##
@@ -48,7 +49,9 @@ BDD100K_DIRECTORY = os.path.join(BASE_DIR, 'bdd100k')
 DEFAULT_IMG_EXTENSION = '.jpg'
 
 class DataFormatter(object):
-    def __init__(self, annotations_list, s3_bucket = None, check_s3 = False, input_format=Format.scalabel, output_path=os.getcwd(), pickle_file = None, trainer_prefix = None, coco_annotations_file = None, darknet_manifast = None):
+    def __init__(self, annotations_list, s3_bucket = None, check_s3 = False,
+                    input_format=Format.scalabel, output_path=os.getcwd(), pickle_file = None,
+                    trainer_prefix = None, coco_annotations_file = None, darknet_manifast = None):
 
         self.input_format = input_format
         self._images = {}
@@ -72,13 +75,44 @@ class DataFormatter(object):
         if self._pickle_file and os.path.exists(self._pickle_file):
             self._images, self._annotations = self.get_cache(self._pickle_file)
         else:
+            ###------------------ Kache Logs Data Handler -----------------------###
+            if self.input_format == Format.kache:
+                # Get images from image_list Directory
+                # Prepare Data using BDD100K to get list of images
+                # Run Darknet on Images to get list of annotations_list
+                # Combine image_list and annotations from Darknet and export to Scalabel Format
+                # Export to Darknet
+                pass
+
+
             ###------------------ Scalabel Data Handler -----------------------###
             if self.input_format == Format.scalabel:
                 with open(image_list, 'r') as stream:
+                    uris2paths = {}
                     image_data = yaml.load(stream)
                     if image_data:
                         for img in image_data:
-                            img_url = img['url']
+                            uri = img['url']
+
+                            fname = os.path.split(uri)[-1]
+                            img_key, uris2paths[uri] = self.load_training_img_uri(uri)
+
+                            im = Image.open(uris2paths[uri])
+                            width, height = im.size
+                            if self.s3_bucket: s3uri = self.send_to_s3(uri)
+
+
+                            self._images[img_key] = {'url': s3uri, 'name': s3uri, 'coco_path': uris2paths[uri],
+                                                              'width': width, 'height': height, 'labels': [],
+                                                              'index': idx, 'timestamp': 10000,
+                                                              'videoName': '',
+                                                              'attributes': {'weather': None,
+                                                                             'scene': None,
+                                                                             'timeofday': None}}
+                            self._annotations[img_key] = []
+
+
+
                             fname = os.path.split(img_url)[-1]
                             full_path = self.maybe_download(img_url, img_prefix+fname)
                             if s3_bucket:
@@ -115,7 +149,7 @@ class DataFormatter(object):
                     annotated_img_idxs = [int(annotation['image_id']) for annotation in data['annotations']]
                     # Add Existing Coco Images
                     imgs = data['images']
-                    imgs_list = [(x['id'], x) for x in imgs if int(x['id']) in annotated_img_idxs]
+                    imgs_list = [(x['id'], x) for x in imgs if int(x['id']) in set(annotated_img_idxs)]
 
                     uris2paths = {}
                     uris = set([(idx, x['file_name']) for idx, x in imgs_list])
@@ -123,7 +157,6 @@ class DataFormatter(object):
                     for idx, uri in uris:
                         fname = os.path.split(uri)[-1]
                         img_key, uris2paths[uri] = self.load_training_img_uri(uri)
-
 
                         im = Image.open(uris2paths[uri])
                         width, height = im.size
@@ -139,7 +172,7 @@ class DataFormatter(object):
                                                                          'timeofday': None}}
                         self._annotations[img_key] = []
 
-                        for ann in [l for l in data['annotations'] if int(l['id']) == idx]:
+                        for ann in [l for l in data['annotations'] if int(l['image_id']) == idx]:
                             label = {}
                             label['id'] = ann['id']
                             label['attributes'] = {'Occluded':False,
@@ -150,22 +183,22 @@ class DataFormatter(object):
                             label['manualAttributes'] = True
 
                             # Get category name from COCO trainer_prefix
+                            cat = self.coco.loadCats([ann['category_id']])[0]
 
-
-                            label['category'] = self.coco.loadCats([ann['category_id']])[0]
+                            if cat and isinstance(cat, list):
+                                label['category'] = cat[0]['name']
+                            elif cat and isinstance(cat, dict):
+                                label['category'] = cat['name']
+                            else:
+                                label['category'] = None
 
                             label['box3d'] = None
                             label['poly2d'] = None
-                            label['box2d'] = {'x1': float(ann['bbox'][0]), 'y1': float(ann['bbox'][1]), 'x2': float(ann['bbox'][0]+ann['bbox'][2]),
-                            'y2': float(ann['bbox'][1]+ ann['bbox'][3])}
+                            label['box2d'] = {'x1': "%.3f" % round(float(ann['bbox'][0]),3), 'y1': "%.3f" % round(float(ann['bbox'][1]),3),
+                                             'x2':  "%.3f" % round(float(ann['bbox'][0]+ann['bbox'][2]),3) , 'y2': "%.3f" % round(float(ann['bbox'][1]+ ann['bbox'][3]),3)}
                             self._images[img_key]['labels'].append(label)
                             ann_idx +=1
                         self._annotations[img_key].extend(self._images[img_key]['labels'])
-
-
-
-
-
 
 
 
@@ -352,7 +385,7 @@ class DataFormatter(object):
         print('Length of COCO Images', len(self._images))
 
     def merge_data(self, merging_set, merging_cats=[]):
-        self, data_files=[("my_data", ["data/data_file"])],
+        pass
 
 
     def maybe_download(self, source_uri, destination):
@@ -415,7 +448,7 @@ class DataFormatter(object):
     def generate_names_cfg(self):
         self.names_config = os.path.join(self.config_dir, self.trainer_prefix+'.names')
         with open(self.names_config, 'w+') as writer:
-            for category in set(self.category_names):
+            for category in sorted(set(self.category_names)):
                 writer.write(category+'\n')
 
     def path_leaf(self, path):
@@ -483,10 +516,10 @@ class DataFormatter(object):
         cats = [[label['category'] for label in labels] for labels in anns]
         categories = []
         [categories.extend(cat) for cat in cats]
-        self.category_names = set(categories)
+        self.category_names = sorted(set(categories))
         self.cats2ids, self.ids2cats = {}, {}
 
-        for i, label in enumerate(set(categories)):
+        for i, label in enumerate(sorted(set(categories))):
             self.cats2ids[str(label).lower()] = i
         self.ids2cats = {i: v for v, i in self.cats2ids.items()}
 
@@ -547,7 +580,6 @@ class DataFormatter(object):
 
 
     def parse_nvidia_smi(self):
-
         sp = subprocess.Popen(['nvidia-smi', '-q'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         out_str = sp.communicate()
         out_list = out_str[0].decode("utf-8").split('\n')
