@@ -409,6 +409,7 @@ class DataFormatter(object):
 
         ## Exclude block ##
         deletions = []
+        ann_deletions = []
 
         # Set exclude to all remaining categories if None
         if not exclude:
@@ -422,6 +423,8 @@ class DataFormatter(object):
                 if ann['category'].replace(' ', '').lower() in exclude:
                     delete_marker = True
                     break
+                elif ann['category'].replace(' ', '').lower() not in self.category_names:
+                    ann_deletions.append(ann)
 
             if delete_marker:
                 # Remove images
@@ -435,15 +438,12 @@ class DataFormatter(object):
 
         # Prune annotations
         if reject_new_categories:
-            ann_deletions = []
             for fname in merging_set._images.keys():
-                for ann in merging_set._annotations[fname]:
-                    if ann['category'] not in self.category_names:
-                        ann_deletions.append(ann)
-
                 for ann in ann_deletions:
-                    merging_set._annotations[fname].remove(ann)
-
+                    if merging_set._annotations.get(fname, None) and ann in merging_set._annotations[fname]:
+                        merging_set._annotations[fname].remove(ann)
+                    if merging_set._images.get(fname, None) and ann in merging_set._images[fname]['labels']:
+                        merging_set._images[fname]['labels'].remove(ann)
 
 
         # Merge Dataset
@@ -464,6 +464,12 @@ class DataFormatter(object):
 
         self.export(format = Format.scalabel)
         self.show_data_distribution()
+
+        # Save object to picklefile
+        pickle_dict = {'images':self._images,'annotations':self._annotations}
+        print('Saving to Pickle File:', self._pickle_file)
+        with open(self._pickle_file,"wb") as pickle_out:
+            pickle.dump(pickle_dict, pickle_out)
 
 
 
@@ -501,7 +507,8 @@ class DataFormatter(object):
 
     def load_training_img_uri(self, fname):
         if urllib.parse.urlparse(fname).scheme != "" or os.path.isabs(fname):
-            fname = os.path.split(fname)[-1]
+            fname = os.path.join(BDD100K_DIRECTORY, 'images/100k/train', os.path.split(fname)[-1])
+            img_key = self.trainer_prefix+self.path_leaf(fname)
         elif not os.path.isabs(fname):
             if self.input_format == Format.bdd:
                 # source_dir = bdd100k/train
