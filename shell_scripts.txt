@@ -1,14 +1,172 @@
-## AWS Scripts ##
 
-aws s3 sync /media/dean/datastore1/datasets/darknet_evaluate/trained_weights/ s3://kache-gym/object-detection/darknet/
+ ## Log on to Jupyter ##
+ cd /media/dean/datastore/datasets/Scripts && source activate ros-kache && jupyter notebook
 
-# Prepare BDD100k Validation Set Image List #
-cd /media/dean/datastore1/datasets/BerkeleyDeepDrive/scalabel/scripts && python prepare_data.py -i /media/dean/datastore1/datasets/BerkeleyDeepDrive/bdd100k/images/100k/val/ --s3 kache-scalabel/kache-bags/kache-annotations
 
-cd /media/dean/datastore1/datasets/BerkeleyDeepDrive/scalabel/scripts && python prepare_data.py -i /media/dean/datastore1/datasets/BerkeleyDeepDrive/bdd100k/images/100k/train/
+
+
+
+
+## AWS Sync Scripts ##
+aws s3 sync /media/dean/datastore/datasets/darknet/darknet_evaluate/trained_weights/ s3://kache-gym/object-detection/darknet/
+aws s3 sync /media/dean/datastore/datasets/darknet/data/coco/annotations/ s3://kache-gym/object-detection/darknet/annotations/
+aws s3 sync s3://kache-logs/jpgs/ /media/dean/datastore/datasets/atm/jpgs/
+aws s3 sync /media/dean/datastore/datasets/road_coco/darknet/data/coco/ s3://kache-scalabel/coco_dataset/
+
+# Upload Kache AI Logs to S3 #
+aws s3 sync . s3://kache-scalabel/kache_ai/frames/
+
+aws s3 sync s3://kache-scalabel/bdd100k/ /data/BerkeleyDeepDrive/bdd100k/
+
+aws s3 sync /media/dean/datastore/datasets/polynet_frames/ s3://kache-gym/lane-keeping/polynet/data/
+
+
+# Connect to EC2 #
+cd /media/dean/datastore/datasets/BerkeleyDeepDrive/scalabel/ && ssh -i "scalabel-server.pem" ubuntu@ec2-52-25-35-71.us-west-2.compute.amazonaws.com
+
+# Connect to AWS for Training #
+cd /media/dean/datastore/datasets/Scripts/ && ssh -i "dean-hermes.pem" ubuntu@ec2-34-222-157-112.us-west-2.compute.amazonaws.com
+cd /media/dean/datastore/datasets/Scripts/ && ssh -i "dean-hermes.pem" ubuntu@ec2-34-218-250-187.us-west-2.compute.amazonaws.com
+cd /media/dean/datastore/datasets/Scripts/ && ssh -i "dean-hermes.pem" ubuntu@ec2-50-112-144-168.us-west-2.compute.amazonaws.com
+
+
+
+# Push to Darknet and Darknet 2 #
+cd /media/dean/datastore/datasets/Scripts/ && sudo scp -i "dean-hermes.pem" /media/dean/datastore/datasets/darknet/data/bdd100k/annotations/bdd100k_altered_annotations.json ubuntu@ec2-34-218-250-187.us-west-2.compute.amazonaws.com:/data/darknet/data/coco/annotations/
+cd /media/dean/datastore/datasets/Scripts/ && ssh -i "dean-hermes.pem" ubuntu@ec2-34-218-250-187.us-west-2.compute.amazonaws.com
+
+
+# Push Pickle to AWS #
+cd /media/dean/datastore/datasets/Scripts/ && sudo scp -i "dean-hermes.pem" /media/dean/datastore/datasets/Scripts/BerkeleyDeepDrive_bdd100k_labels_bdd100k_labels_images_train.json.pickle ubuntu@ec2-34-222-157-112.us-west-2.compute.amazonaws.com:/data/
+
+
+# Push to Polynet-trainer 3
+cd /media/dean/datastore/datasets/Scripts/ && sudo scp -i "dean-hermes.pem" -r /media/dean/datastore/datasets/polynet_v4_1/ ubuntu@ec2-34-217-109-28.us-west-2.compute.amazonaws.com:/data/
+cd /media/dean/datastore/datasets/Scripts/ && ssh -i "dean-hermes.pem" ubuntu@ec2-34-217-109-28.us-west-2.compute.amazonaws.com
+cd /media/dean/datastore/datasets/Scripts/ && sudo scp -i "dean-hermes.pem" -r /media/dean/datastore/datasets/polynet_frames/ ubuntu@ec2-34-218-250-187(darknetrtrainer).us-west-2.compute.amazonaws.com:/data
+sudo scp -i "dean-hermes.pem" -r /home/anthony/Documents/datasets/s3_frames/ ubuntu@ec2-34-217-109-28.us-west-2.compute.amazonaws.com:/data/polynet_frames
+
+sudo scp -i "dean-hermes.pem" -r /media/dean/datastore/datasets/polynet_frames/ ubuntu@ec2-34-218-250-187.us-west-2.compute.amazonaws.com:/data
+
+
+cd /media/dean/datastore/datasets/BerkeleyDeepDrive/scalabel/scripts && python prepare_data.py -i /media/dean/datastore/datasets/atm/jpgs/
+
+## Prepare BDD100k Validation Set Image List ##
+cd /media/dean/datastore/datasets/BerkeleyDeepDrive/scalabel/scripts && python prepare_data.py -i /media/dean/datastore/datasets/BerkeleyDeepDrive/bdd100k/images/100k/val/ --s3 kache-scalabel/kache-bags/kache-annotations
+cd /media/dean/datastore/datasets/BerkeleyDeepDrive/scalabel/scripts && python prepare_data.py -i /media/dean/datastore/datasets/BerkeleyDeepDrive/bdd100k/images/100k/train/
+
+# Prepare COCO Dataset
+cd /media/dean/datastore/datasets/BerkeleyDeepDrive/scalabel/scripts && python prepare_data.py -i /media/dean/datastore/datasets/ROAD_COCO/darknet/data/coco/images/train2014/ --s3 kache-scalabel/coco_dataset/
+
+
+## Visualize BDD Data ##
+cd /media/dean/datastore/datasets/BerkeleyDeepDrive/bdd-data && source activate ros-kache && python3 bdd_data/show_labels.py --image-dir ../bdd100k/images/100k/train -l ../bdd100k/labels/bdd100k_labels_images_train.json
+
 
 
 ## BASH SCRIPTS ##
+# Repeat cat call in loop ##
+while [ true ]; do cd /data/darknet/trainers/run9-bdd-and-coco-ppl_8gpu_000001lr_256bat_64sd_80ep/ && cat training_results.txt && sleep 15 && nvidia-smi && sleep 15 && nvidia-smi && sleep 15; done
 
-find /media/dean/datastore1/datasets/darknet_evaluate/trained_weights/ -type
+find /media/dean/datastore/datasets/darknet_evaluate/trained_weights/ -type
  f -iname '*.txt' -exec rm {} \;
+
+
+## CHECK STORAGE ##
+sudo du -h / | grep -P '^[0-9\.]+G'
+
+ ## Links to BDD100k ##
+ http://ec2-52-25-35-71.us-west-2.compute.amazonaws.com:8686/label2d?project_name=BDD100K-Kache-PT1_4&task_index=0
+
+ http://ec2-52-25-35-71.us-west-2.compute.amazonaws.com:8686/label2d?project_name=BDD100K-Kache-PT2_4&task_index=0
+
+ http://ec2-52-25-35-71.us-west-2.compute.amazonaws.com:8686/label2d?project_name=BDD100K-Kache-PT3_4&task_index=0
+
+
+
+## Run Darkernet ##
+
+python darkernet.py -a '/media/dean/datastore/datasets/road_coco/darknet/data/coco/annotations/instances_train2014.json' -f COCO --resume
+
+
+
+## ROBBIE'S LABELING WORKFLOW ##
+
+# Create images from a youtube video #
+- Download youtube video using https://youtubemultidownloader.net/
+- $ffmpeg -i More\ delays\ today\ after\ foreign\ truck\ accident\ in\ M3\ roadworks.mp4 -vf fps=1 -vsync 0 e%d.jpg
+
+# Create images from google images #
+- Download images using this extension from Google Images. https://addons.mozilla.org/en-US/firefox/addon/google-images-downloader/?src=recommended
+- robbie@melinoe:~/Pictures/final$ find `pwd` -name *.jpg | cat -n | while read n f ; do cp -i -v "$f" "/home/robbie/Pictures/final/$n.jpg" ; done
+
+Link is http://ec2-18-236-156-72.us-west-2.compute.amazonaws.com/via/via.html
+Generate Image txt file
+Move Images to server:
+scp -r -i ~/Downloads/firstkeypairforlabelmetest.pem /home/robbie/Desktop/cones_data/ ubuntu@ec2-18-236-156-72.us-west-2.compute.amazonaws.com:/var/www/html/via/tests/data/cones_data
+Create Image bounding boxes text file
+Copy column ‘H’ to a txt file
+Generate Annotation suggestions in csv file
+Open ~/darknet/python/darknet_testing_v2.py
+Control-f ‘directory’ and modify the directory to be the location of the images that are to be labelled
+Open terminal
+$cd darknet
+- $python2 python/darknet_testing_v2.py
+- $python parser.py
+Suggestions csv file will be located at ~/darknet/annotations/####.csv
+Log in to server: ssh -i ~/Downloads/firstkeypairforlabelmetest.pem ubuntu@ec2-18-236-156-72.us-west-2.compute.amazonaws.com
+Email csv and text file to Tanveer.
+
+To login to server: $ssh -i ~/Downloads/firstkeypairforlabelmetest.pem ubuntu@ec2-18-236-156-72.us-west-2.compute.amazonaws.com
+
+
+
+
+## Setup AWS Volume ##
+sudo mkfs -t ext4 /dev/xvdf
+lsblk
+sudo mkdir /data
+sudo mount /dev/xvdf /data
+df -h
+
+
+
+## Fix pycocotools bug ##
+
+git clone https://github.com/pdollar/coco.git && \
+cd coco/PythonAPI && \
+make && \
+sudo make install && \
+sudo python setup.py install
+
+before doing above steps install cython
+
+
+
+## Pull weights from EC2 ##
+cd /media/dean/datastore/datasets/Scripts/ && sudo scp -i "dean-hermes.pem"  ubuntu@ec2-34-218-250-187.us-west-2.compute.amazonaws.com:/data/darknet/weights.tar.gz /media/dean/datastore/datasets/darknet/trainers/run9-bdd-and-coco-ppl_8gpu_000001lr_256bat_64sd_80ep/backup/
+
+cd /media/dean/datastore/datasets/Scripts/ && sudo scp -i "dean-hermes.pem"  ubuntu@ec2-50-112-144-168.us-west-2.compute.amazonaws.com:/data/darknet/trainers/20181019--bdd-coco-ppl_1gpu_0001lr_256bat_32sd_90ep/backup/yolov3-bdd100k_86469.weights /media/dean/datastore/datasets/darknet/trainers/20181019--bdd-coco-ppl_1gpu_0001lr_256bat_32sd_90ep/backup/yolov3-bdd100k_final.weights
+
+
+## Kick off Training w/ Parameters ##
+
+## Darknet Trainer 2 ##
+python3 darkernet.py -a '/data/darknet/data/coco/annotations/bdd100k_cocoppltrains_annotations.json' -f BDD
+
+COCO_ANNOTATIONS_LIST = os.path.join('/data/darknet/data/coco/annotations/instances_train2014.json')
+
+
+
+
+
+## SCP From Cube1 ##
+sudo scp -r anthony@cube1:/media/anthony/6245016d-f194-4a3d-b749-8762c8b57e5b/batch_4pts/ /media/dean/datastore/datasets/kache_ai/polynet_frames/batch_4pts/
+
+sudo scp -r anthony@cube1:/home/anthony/Documents/datasets/tools/build_batch/ /media/dean/datastore/datasets/kache_ai/polynet_frames/build_batch/
+
+## SCP from Cube2 ##
+
+
+sudo scp -r anthony@cube2:/home/anthony/Documents/polynet_v4_2/ /media/dean/datastore/datasets/kache_ai/polynet_frames/build_batch/polynet_v4_2/
+cd /media/dean/datastore/datasets/Scripts/ && sudo scp -i "dean-hermes.pem" -r /media/dean/datastore/datasets/kache_ai/polynet_frames/ ubuntu@ec2-50-112-144-168.us-west-2.compute.amazonaws.com:/data/polynet_frames/
