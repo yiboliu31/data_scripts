@@ -1,4 +1,5 @@
 
+
 # Kache.ai - Annotation Guidelines
 
 The goal of this post is to provide instructions for the new machine labeling policy. These guidelines also serve as a getting started guide to introduce the [Scalabel Platform](http://scalabel.ai), created by the [Berkeley Deep Drive Team](http://bdd-data.berkeley.edu/).
@@ -23,7 +24,7 @@ To create a project, navigate to the [Scalabel app](http://ec2-52-25-35-71.us-we
 
 ---
 
-### Getting Started - Creating a New Project
+### Getting Started - Creating a New Project & Uploading an Annotations File
 
 
 * Once you see the screen shown below, click **Create A New Project** 
@@ -34,30 +35,19 @@ To create a project, navigate to the [Scalabel app](http://ec2-52-25-35-71.us-we
 
 
 |   Project Creation - Scalabel   |
-|:-------------------------------:|
-|      ![homepage][image1]        |
-|     ![create][image2]           |
-|     ![upload_cfgs][image3]      |
 
-
-## Uploading an Annotations File
-
-Generally, this file will be provided by internal scripts which select images we intend to use for training nets. Upload the given document into the *item list*.
+|  Homepage   |  Create Project |  Upload Configs | Upload Annotations |
+|:-----------------:|:----------------:|:-----------------:|:-----------------:|
+|  ![homepage][image1] | ![create][image2] | ![upload_cfgs][image3]|  ![upload_anns][image4] |
 
 
 
-![upload_anns][image4]
+Generally, the annotations file will be provided by internal scripts or databse which selects images intended for training nets. Upload the given document into the *item list*.
+
 
 ---
 
-And that's it. Clicking **Enter** will generate a new task list. 
-
-
-![post_proj][image5]
-
----
-
-Click on **Go To Project Dashboard**, the next page will give you the option to click one the tasks generated and begin annotating. Also from the dashboard, you will have the option to <font color='red'>export your results into bdd format for training</font> 
+And that's it. Clicking **Enter** will generate a new task list. Clicking on **Go To Project Dashboard** on the next page will give you the option to click one the tasks generated and begin annotating. Also from the dashboard, you will have the option to <font color='red'>export your results into bdd format for training</font> 
 
 
 ![proj_dash][image6]
@@ -69,7 +59,7 @@ Click on **Go To Project Dashboard**, the next page will give you the option to 
 
 ---
 
-## Style Guides: 
+## Style Guide: 
 
 In this section, we will explore the BDD distibution and define our policy for labeling. 
 
@@ -80,9 +70,24 @@ In this section, we will explore the BDD distibution and define our policy for l
 We would like to continue to maintain BDD's granularity and attribute associations in all new images. this will allow us to easily blend our interal data with the BDD distribution. In particular, we will maintain using occlusion and truncation for all pertaining objects. For our purposes, the respective attributes are defined as follows:
 
 - **Occlusion:** When one object is hidden by another object that passes between it and the observer. The term refers to any situation in which an object in the foreground blocks from view (occults) an object in the background. In our sense, occlusion applies to the visual scene observed from computer-generated imagery when foreground objects obscure distant objects dynamically, as the scene changes over time. 
+
+
+| Occlusion Examples|
+|:-----------------:|
+|![][image68]|
+|![][image69]|
+|![][image70]|
+|![][image71]|
  
  
 - **Truncation:** The bounding box of the object specified does not correspond to the full extent of the object e.g. an image of a person from the waist up, or a view of a car extending outside the outside the field of view of the camera/image, such that it is partially shown. It is assumed with truncated images that a subsequent perspective shift will then clarify the bounds in the view of the truncated object.
+
+|  Truncation Examples |
+|:-----------------:|
+| ![][image72]|
+|![][image73]|
+|![][image74]|
+|![][image75] |
 
 ---
 
@@ -97,14 +102,13 @@ Semi-Truck Attribute Labels
 
 Our definition of a truck is somewhat different from the definition in the BDD dataset. To avoid this confusion, we have set up the **Semi** attribute to assign to truck labels of vehicles which **require a class A license or similar to drive.** Examples of trucks which **do not** require a Semi tag are pickups, tow trucks, RVs, trailers, etc. 
 
-Another proper **Semi** truck type are the [**Towing Wrecker Vehicles**](https://www.google.com/search?q=towing+wreckers&source=lnms&tbm=isch&sa=X&ved=0ahUKEwiq7JCEsvfdAhWFJnwKHRfNB-gQ_AUIECgD&biw=1855&bih=990). The example above is a tow truck but should be labeled as a car since its towing capacity is similar to a modified pickup. We consider this type of truck in a different class than the larger breed shown in the hyperlink above. 
+Another proper **Semi** truck type are the [**Towing Wrecker Vehicles**](https://www.google.com/search?q=towing+wreckers&source=lnms&tbm=isch&sa=X&ved=0ahUKEwiq7JCEsvfdAhWFJnwKHRfNB-gQ_AUIECgD&biw=1855&bih=990). The example above is a tow truck but should be labeled as a truck without semi for the reasons explained below in the class taxonomy.
 
-
-Bus Mis-Labels
 
 ---
-
-![bus_v_car][image11]
+| Bus Mis-Labels |
+|:-----------------:|
+|![bus_v_car][image11]|
 
 ---
 
@@ -115,12 +119,9 @@ Car Mis-Labels
 
 ---
 
-|  Incorrect/Missing Car Labels   |
-|:-------------------------------:|
-|     ![car_antenna][image12]     |
-|     ![car_mislabel0][image15]   |
-|     ![car_mislabel1][image13]   |
-|     ![car_mislabel2][image14]   |
+|  Example 1   |  Example 2 |  Example 3 | Example 4 |
+|:-----------------:|:----------------:|:-----------------:|:-----------------:|
+| ![car_antenna][image12]| ![car_mislabel0][image15]| ![car_mislabel1][image13]|  ![car_mislabel2][image14] |
 
 ---
 
@@ -151,7 +152,136 @@ Another great feature of Scalabel is that you can easily change the classificati
 
 And many more soon to come.
 
+
+### Class Taxonomy: Car
+
+This category includes vans, lightweight utility vehicles, SUVs, sedans, hatchbacks, classic cars, sports cars, exotic cars, etc. This category also includes special purpose compact vehicles. i.e., Mini Shuttles, meter maids
+- Note: Any type of **pickup truck** will be excluded from this category and labeled as trucks.
+
 ---
+
+|  Cars Ex.      |
+|:--------------:|
+|![car1][image16]|
+|![car2][image17]|
+|![car3][image18]|
+|![car4][image19]|
+|![car5][image20]|
+|![car6][image21]|
+|![car7][image22]|
+|![car8][image23]|
+
+---
+
+### Class Taxonomy: Truck
+
+This category includes pickup trucks (light to heavy duty), trucks/straight trucks (chassis cab trucks), mail delivery trucks,  recreational vehicles (RVs), Motorized Campers, and Semi Tractors.
+
+- Note: Chassis Cab trucks have some trailer or machinery permanently attached to the chassis of the truck. Common examples include **garbage trucks, concrete trucks**, and **box trucks**
+
+
+---
+
+|  Truck Ex.   |  Truck Ex. |
+|:-----------------:|:----------------:|
+| ![truck1][image24]|
+| ![truck2][image25]| 
+|![truck3][image26]|
+|![truck4][image27]|
+|![truck5][image28]|
+|![truck6][image29]|
+|![truck7][image30]|
+|![truck8][image31]|
+|![truck9][image64]|
+|![truck10][image65]|
+|![truck11][image66]|
+|![truck12][image67]|
+
+---
+
+### Class Taxonomy: Semi  Truck
+
+This sub-category corresponds to what are known as Semi Trucks. A Semi Truck has a fifth wheel coupling to attach various types of semi trailers. For our labeling purposes, these trucks should be labeled as trucks with the semi attribute whether or not the corresponding semi-trailer is attached to it. Of note, semi trucks are mechanically different from the earlier mentioned chassis cab trucks in that:
+1. The trailer component is *detachable* from the chassis of the car
+2. The trailer component is *articulated* . Many types of trailers (https://en.wikipedia.org/wiki/Semi-trailer)
+
+- Note: These examples should be labeled as **truck** with the additional **Semi** attribute to distinguish from all other trucks in the category.
+
+
+---
+
+|  Semi Examples |
+|:-----------------:|
+|![semi1][image32]|
+|![semi2][image33]|
+|![semi3][image34]|
+|![semi4][image35]|
+|![semi][image36]|
+|![semi][image37]|
+|![semi7][image38]|
+|![semi8][image39]|
+
+---
+
+### Class Taxonomy: Bus
+
+This category includes tour buses, shuttle buses, school buses, articulated buses, trolleys, and more. Particular shuttle buses are easy to confuse with vans and some trucks. The tie breaker with these are folding doors
+
+
+---
+
+|  Bus Ex. |  Bus Ex. |  Bus Ex.  | Bus Ex. |
+|:----------------:|:--------------:|:--------------:|:-------------:|
+|![car_antenna][image40]|![car_antenna][image41]|![car_antenna][image42]|![car_antenna][image43]|
+|![car_antenna][image44]|![car_antenna][image45]|![car_antenna][image46]|![car_antenna][image47]|
+
+---
+
+
+
+### Class Taxonomy: Trailer
+
+This category includes any non-motorized vehicle generally intended to be pulled by a motorized vehicle used primarily for hauling. Exclude semi-trailers attached to Semi Trucks. Examples: camper trailer, cargo trailer, utility trailer, semi trailer (*detached*)
+
+
+---
+
+|  Trailer Ex.   | 
+|:----------------:|
+|![car_antenna][image48]|
+|![car_antenna][image49]|
+|![car_antenna][image50]|
+|![car_antenna][image51]|
+|![car_antenna][image52]|
+|![car_antenna][image53]|
+|![car_antenna][image54]|
+|![car_antenna][image55]|
+
+---
+
+### Class Taxonomy: Construction Equipment
+
+This category includes any machinery that is used in contruction zones and sites.
+- Note: Construction Equipment is usually painted yellow or orange according to federal law. In addition, this machinery, if motorized, is not allowed to drive outside the construction zone.
+
+
+---
+
+|  Construction Equipment Ex. | 
+|:----------------:|
+|![car_antenna][image56]|
+|![car_antenna][image57]|
+|![car_antenna][image58]|
+|![car_antenna][image59]|
+|![car_antenna][image60]|
+|![car_antenna][image61]|
+|![car_antenna][image62]|
+|![car_antenna][image63]|
+
+---
+
+
+
 
 ## For Developers:
 
@@ -257,36 +387,6 @@ Lane marking category is `lane`. There are 8 lane styles `laneStyle`:
 
 Both drivable areas and lane markings are labeled by `poly2d`. Please check the visulization code [`show_labels.py`](../bdd_data/show_labels.py) for examples of drawing all the labels.
 
-
-### Old Format (Before 08-28-2018)
-
-- name: string
-- attributes:
-    - weather: "rainy|snowy|clear|overcast|undefined|partly cloudy|foggy"
-    - scene: "tunnel|residential|parking lot|undefined|city street|gas stations|highway|"
-    - timeofday: "daytime|night|dawn/dusk|undefined"
-- frames [ ]:
-    - timestamp: int64 (epoch time ms)
-    - index: int (optional, frame index in this video)
-    - objects [ ]:
-        - id: int32
-        - category: string (classification)
-        - attributes:
-            - occluded: boolean
-            - truncated: boolean
-            - trafficLightColor: "red|green|yellow|none"
-            - direction: "parallel|vertical" (for lanes)
-            - style: "solid | dashed" (for lanes)
-        - box2d:
-            - x1: pixels
-            - y1: pixels
-            - x2: pixels
-            - y2: pixels
-        - poly2d: Each segment is an array of 2D points with type (array)
-                  "L" means line and "C" means beizer curve.
-        - seg2d: List of poly2d. Some object segmentation may contain multiple regions
-
-
 ---
 
 [//]: # (Image References)
@@ -305,3 +405,64 @@ Both drivable areas and lane markings are labeled by `poly2d`. Please check the 
 [image13]: readme_imgs/car_mislabel1.png
 [image14]: readme_imgs/car_mislabel2.png
 [image15]: readme_imgs/car_mislabel0.png
+[image16]: readme_imgs/carss1_resized.png
+[image17]: readme_imgs/carss2_resized.png
+[image18]: readme_imgs/car5_resized.png
+[image19]: readme_imgs/carss4_resized.png
+[image20]: readme_imgs/car3_resized.png
+[image21]: readme_imgs/car6_resized.png
+[image22]: readme_imgs/car7_resized.png
+[image23]: readme_imgs/car8_resized.png
+[image24]: readme_imgs/truck1_resized.png
+[image25]: readme_imgs/truck2_resized.png
+[image26]: readme_imgs/truck3_resized.png
+[image27]: readme_imgs/truck4_resized.png
+[image28]: readme_imgs/truck5_resized.png
+[image29]: readme_imgs/trucks6_resized.png
+[image30]: readme_imgs/truck7_resized.png
+[image31]: readme_imgs/truck8_resized.png
+[image32]: readme_imgs/semiss1_resized.png
+[image33]: readme_imgs/semi2_resized.png
+[image34]: readme_imgs/semiss3_resized.png
+[image35]: readme_imgs/semiss4_resized.png
+[image36]: readme_imgs/semiss5_resized.png
+[image37]: readme_imgs/semi6_resized.png
+[image38]: readme_imgs/semi7_resized.png
+[image39]: readme_imgs/semi8_resized.png
+[image40]: readme_imgs/bus1_resized.png
+[image41]: readme_imgs/bus2_resized.png
+[image42]: readme_imgs/bus3_resized.png
+[image43]: readme_imgs/bus4_resized.png
+[image44]: readme_imgs/bus5_resized.png
+[image45]: readme_imgs/bus6_resized.png
+[image46]: readme_imgs/bus7_resized.png
+[image47]: readme_imgs/bus8_resized.png
+[image48]: readme_imgs/trailer1_resized.png
+[image49]: readme_imgs/trailer2_resized.png
+[image50]: readme_imgs/trailer3_resized.png
+[image51]: readme_imgs/trailers4_resized.png
+[image52]: readme_imgs/trailers5_resized.png
+[image53]: readme_imgs/trailer6_resized.png
+[image54]: readme_imgs/trailer7_resized.png
+[image55]: readme_imgs/trailer8_resized.png
+[image56]: readme_imgs/construct-equips1_resized.png
+[image57]: readme_imgs/construct-equip5_resized.png
+[image58]: readme_imgs/construct-equip8_resized.png
+[image59]: readme_imgs/construct-equips4_resized.png
+[image60]: readme_imgs/construct-equip2_resized.png
+[image61]: readme_imgs/construct-equip6_resized.png
+[image62]: readme_imgs/construct-equip7_resized.png
+[image63]: readme_imgs/construct-equip3_resized.png
+[image64]: readme_imgs/truck9_resized.png
+[image65]: readme_imgs/truck10_resized.png
+[image66]: readme_imgs/truck11_resized.png
+[image67]: readme_imgs/truck12_resized.png
+[image68]: readme_imgs/occlusion1_resized.png
+[image69]: readme_imgs/occlusion2_resized.png
+[image70]: readme_imgs/occlusion3_resized.png
+[image71]: readme_imgs/occlusion4_resized.png
+[image72]: readme_imgs/truncation1_resized.png
+[image73]: readme_imgs/truncation2_resized.png
+[image74]: readme_imgs/truncation3_resized.png
+[image75]: readme_imgs/truncation4_resized.png
+
