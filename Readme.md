@@ -91,7 +91,7 @@ We would like to continue to maintain BDD's granularity and attribute associatio
 
 ---
 
-### Style Guides: <font color='red'>Mis-Classifications / Class-Ambiguities</font> 
+### Style Guides: <font color='red'> Mis-Labels / Mis-Classifications / Class-Ambiguities</font> 
 
 Overall the BDD dataset is remarkably accurate and the class ambiguities are nuanced, however there are some consistent miscategorizations that we would like fixed in our final production dataset. Among those subtleties, a few features we should aim to correct are as follows:
 
@@ -104,13 +104,6 @@ Our definition of a truck is somewhat different from the definition in the BDD d
 
 Another proper **Semi** truck type are the [**Towing Wrecker Vehicles**](https://www.google.com/search?q=towing+wreckers&source=lnms&tbm=isch&sa=X&ved=0ahUKEwiq7JCEsvfdAhWFJnwKHRfNB-gQ_AUIECgD&biw=1855&bih=990). The example above is a tow truck but should be labeled as a truck without semi for the reasons explained below in the class taxonomy.
 
-
----
-| Bus Mis-Labels |
-|:-----------------:|
-|![bus_v_car][image11]|
-
----
 
 Similar to the trucks class, our definition of a bus is more constrained. We will define a bus as only those vehicles which are large enough to have the typical bus-styled swinging door openening mechanism which attached to a turn crank. An example of a truck mis-label is shown above. In this case, we want to classify this vehicle as a bus because it likely has a door that need to swing out to open. As it is a shuttle, it is also likely to make frequent stops.
 
@@ -128,6 +121,31 @@ Car Mis-Labels
 With the exceptions to the above, our definition of cars is identical to BDD.. One small difference to note is that we will define the car bounding box to include the car itself, excluding protruding items like the car atenna mounted above the car.
 
 In the other examples, the car classes are either a) mis-labeled altogether, or b) labeled, but missing the proper **occlusion** or **truncation** attrubutes. We must clean these instances up.
+
+
+### Mis-Labeled Examples
+
+---
+
+|Mis-Labeled Examples|
+|:--------------:|
+|![][image76]|
+|![][image77]|
+|![][image78]|
+|![][image79]|
+|![][image80]|
+|![][image81]|
+|![][image82]|
+|![][image83]|
+|![][image84]|
+|![][image85]|
+|![][image86]|
+|![][image87]|
+|![][image88]|
+|![][image89]|
+|![][image90]|
+
+---
 
 
 ## Style Guides: Class Taxonomy
@@ -182,8 +200,8 @@ This category includes pickup trucks (light to heavy duty), trucks/straight truc
 
 ---
 
-|  Truck Ex.   |  Truck Ex. |
-|:-----------------:|:----------------:|
+|  Truck Ex.   |
+|:-----------------:|
 | ![truck1][image24]|
 | ![truck2][image25]| 
 |![truck3][image26]|
@@ -465,4 +483,19 @@ Both drivable areas and lane markings are labeled by `poly2d`. Please check the 
 [image73]: readme_imgs/truncation2_resized.png
 [image74]: readme_imgs/truncation3_resized.png
 [image75]: readme_imgs/truncation4_resized.png
+[image76]: readme_imgs/label_qa_slide2.png
+[image77]: readme_imgs/label_qa_slide3.png
+[image78]: readme_imgs/label_qa_slide4.png
+[image79]: readme_imgs/label_qa_slide5.png
+[image80]: readme_imgs/label_qa_slide6.png
+[image81]: readme_imgs/label_qa_slide7.png
+[image82]: readme_imgs/label_qa_slide8.png
+[image83]: readme_imgs/label_qa_slide9.png
+[image84]: readme_imgs/label_qa_slide10.png
+[image85]: readme_imgs/label_qa_slide11.png
+[image86]: readme_imgs/label_qa_slide12.png
+[image87]: readme_imgs/label_qa_slide13.png
+[image88]: readme_imgs/label_qa_slide14.png
+[image89]: readme_imgs/label_qa_slide15.png
+[image90]: readme_imgs/label_qa_slide16.png
 
