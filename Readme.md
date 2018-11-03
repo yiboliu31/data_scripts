@@ -120,7 +120,7 @@ Car Mis-Labels
 
 With the exceptions to the above, our definition of cars is identical to BDD.. One small difference to note is that we will define the car bounding box to include the car itself, excluding protruding items like the car atenna mounted above the car.
 
-In the other examples, the car classes are either a) mis-labeled altogether, or b) labeled, but missing the proper **occlusion** or **truncation** attrubutes. We must clean these instances up.
+In the other examples, the car classes are either a) mis-labeled altogether, or b) labeled, but missing the proper **occlusion** or **truncation** attributes. We must clean these instances up.
 
 
 ### Mis-Labeled Examples
@@ -129,21 +129,21 @@ In the other examples, the car classes are either a) mis-labeled altogether, or 
 
 |Mis-Labeled Examples|
 |:--------------:|
-|![][image76]|
-|![][image77]|
-|![][image78]|
-|![][image79]|
-|![][image80]|
-|![][image81]|
-|![][image82]|
-|![][image83]|
-|![][image84]|
-|![][image85]|
-|![][image86]|
-|![][image87]|
-|![][image88]|
-|![][image89]|
-|![][image90]|
+|![mislabel1][image76]|
+|![mislabel2][image77]|
+|![mislabel3][image78]|
+|![mislabel4][image79]|
+|![mislabel5][image80]|
+|![mislabel6][image81]|
+|![mislabel7][image82]|
+|![mislabel8][image83]|
+|![mislabel9][image84]|
+|![mislabel10][image85]|
+|![mislabel11][image86]|
+|![mislabel12][image87]|
+|![mislabel13][image88]|
+|![mislabel14][image89]|
+|![mislabel15][image90]|
 
 ---
 
