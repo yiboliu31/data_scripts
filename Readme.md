@@ -5,16 +5,16 @@
 The goal of this post is to provide instructions for the new machine labeling policy. These guidelines also serve as a getting started guide to introduce the [Scalabel Platform](http://scalabel.ai), created by the [Berkeley Deep Drive Team](http://bdd-data.berkeley.edu/).
 
 
-## Scalabel Labeling Tool
+## Scalabel Labeling Web Application
 
-Migrating to this tool provides us with a variety of advantages over the legacy systems (LabelMe, VGG, etc). For example, scalabel allow us to tag images with custom attributes. In addition to labeling categories (e.g., cars), we can advantageously encode features from the environment such as the **occlusion** and **truncation** parameters. 
-In addition, Scalabel provides a flexible and robust data format that supports labeling pipelines particularly suited for autonomous driving. We will be utilizing Scalabel as the central tool for providing human annotations moving forward.
+For object detection, Kache uses [Scalabel](http://scalabel.ai), which provides us a variety of advantages over the legacy systems (VGG, etc). For example, [scalabel](http://scalabel.ai) allow us to tag images with custom attributes. In addition to labeling categories (e.g., cars), we can advantageously encode features from the environment such as the **occlusion** and **truncation** parameters. 
+In addition, [Scalabel](http://scalabel.ai) provides a flexible and robust data format that supports labeling pipelines particularly suited for autonomous driving. We will be utilizing [Scalabel](http://scalabel.ai as the premiere tool for providing human annotations moving forward.
 
 ---
 
 ### Getting Started - Navigating the Web App
 
-To create a project, navigate to the [Scalabel app](http://ec2-52-25-35-71.us-west-2.compute.amazonaws.com:8686/) and simply upload the relevant **annotations file** for correction. As an example, I preloaded the BDD100k dataset for visualization:
+To create a project, navigate to the [Scalabel Application](http://ec2-52-25-35-71.us-west-2.compute.amazonaws.com:8686/) and simply upload the relevant **annotations file** for correction. As an example, I preloaded the BDD100k dataset for visualization:
 
 ---
 
@@ -72,22 +72,18 @@ We would like to continue to maintain BDD's granularity and attribute associatio
 - **Occlusion:** When one object is hidden by another object that passes between it and the observer. The term refers to any situation in which an object in the foreground blocks from view (occults) an object in the background. In our sense, occlusion applies to the visual scene observed from computer-generated imagery when foreground objects obscure distant objects dynamically, as the scene changes over time. 
 
 
-| Occlusion Examples|
-|:-----------------:|
-|![][image68]|
-|![][image69]|
-|![][image70]|
-|![][image71]|
+| Occlusion Examples| Occlusion Examples|
+|:-----------------:|:-----------------:|
+|![][image68]|![][image69]|
+|![][image70]|![][image71]|
  
  
 - **Truncation:** The bounding box of the object specified does not correspond to the full extent of the object e.g. an image of a person from the waist up, or a view of a car extending outside the outside the field of view of the camera/image, such that it is partially shown. It is assumed with truncated images that a subsequent perspective shift will then clarify the bounds in the view of the truncated object.
 
-|  Truncation Examples |
-|:-----------------:|
-| ![][image72]|
-|![][image73]|
-|![][image74]|
-|![][image75] |
+|  Truncation Examples |Truncation Examples |
+|:-----------------:|:-----------------:|
+| ![][image72]|![][image73]|
+|![][image74]|![][image75]|
 
 ---
 
@@ -120,7 +116,7 @@ Car Mis-Labels
 
 With the exceptions to the above, our definition of cars is identical to BDD.. One small difference to note is that we will define the car bounding box to include the car itself, excluding protruding items like the car atenna mounted above the car.
 
-In the other examples, the car classes are either a) mis-labeled altogether, or b) labeled, but missing the proper **occlusion** or **truncation** attributes. We must clean these instances up.
+In the other examples, the car classes are either a) mis-labeled altogether, or b) labeled, but missing the proper **occlusion** or **truncation** attrubutes. We must clean these instances up.
 
 
 ### Mis-Labeled Examples
@@ -178,16 +174,12 @@ This category includes vans, lightweight utility vehicles, SUVs, sedans, hatchba
 
 ---
 
-|  Cars Ex.      |
-|:--------------:|
-|![car1][image16]|
-|![car2][image17]|
-|![car3][image18]|
-|![car4][image19]|
-|![car5][image20]|
-|![car6][image21]|
-|![car7][image22]|
-|![car8][image23]|
+|  Cars Ex.      |  Cars Ex.      |
+|:--------------:|:--------------:|
+|![car1][image16]|![car2][image17]|
+|![car3][image18]|![car4][image19]|
+|![car5][image20]|![car6][image21]|
+|![car7][image22]|![car8][image23]|
 
 ---
 
@@ -200,20 +192,15 @@ This category includes pickup trucks (light to heavy duty), trucks/straight truc
 
 ---
 
-|  Truck Ex.   |
-|:-----------------:|
-| ![truck1][image24]|
-| ![truck2][image25]| 
-|![truck3][image26]|
-|![truck4][image27]|
-|![truck5][image28]|
-|![truck6][image29]|
-|![truck7][image30]|
-|![truck8][image31]|
-|![truck9][image64]|
-|![truck10][image65]|
-|![truck11][image66]|
-|![truck12][image67]|
+|  Truck Ex.   |   Truck Ex.   |
+|:-----------------:|:-------------:|
+| ![truck1][image24]| ![truck2][image25]|
+|![truck3][image26]|![truck4][image27]|
+|![truck5][image28]|![truck6][image29]|
+|![truck7][image30]|![truck8][image31]|
+|![truck9][image64]|![truck10][image65]|
+|![truck11][image66]|![truck12][image67]|
+
 
 ---
 
@@ -228,30 +215,27 @@ This sub-category corresponds to what are known as Semi Trucks. A Semi Truck has
 
 ---
 
-|  Semi Examples |
-|:-----------------:|
-|![semi1][image32]|
-|![semi2][image33]|
-|![semi3][image34]|
-|![semi4][image35]|
-|![semi][image36]|
-|![semi][image37]|
-|![semi7][image38]|
-|![semi8][image39]|
+|  Semi Examples |  Semi Examples |
+|:-----------------:|:--------------:|
+|![semi1][image32]|![semi2][image33]|
+|![semi3][image34]|![semi4][image35]|
+|![semi5][image36]|![semi6][image37]|
+|![semi7][image38]|![semi8][image39]|
 
 ---
 
 ### Class Taxonomy: Bus
 
-This category includes tour buses, shuttle buses, school buses, articulated buses, trolleys, and more. Particular shuttle buses are easy to confuse with vans and some trucks. The tie breaker with these are folding doors
-
+This category includes tour buses, shuttle buses, school buses, articulated buses, trolleys, and more.  Particular shuttle buses are easy to confuse with vans and some trucks. Buses are utilized for 9+ persons, public transport or long distance transport.
 
 ---
 
-|  Bus Ex. |  Bus Ex. |  Bus Ex.  | Bus Ex. |
-|:----------------:|:--------------:|:--------------:|:-------------:|
-|![car_antenna][image40]|![car_antenna][image41]|![car_antenna][image42]|![car_antenna][image43]|
-|![car_antenna][image44]|![car_antenna][image45]|![car_antenna][image46]|![car_antenna][image47]|
+|  Bus Ex. |  Bus Ex. | 
+|:----------------:|:--------------:|
+|![car_antenna][image40]|![car_antenna][image41]|
+| ![car_antenna][image42]|![car_antenna][image43]|
+|![car_antenna][image44]|![car_antenna][image45]|
+|![car_antenna][image46]|![car_antenna][image47]|
 
 ---
 
@@ -264,16 +248,12 @@ This category includes any non-motorized vehicle generally intended to be pulled
 
 ---
 
-|  Trailer Ex.   | 
-|:----------------:|
-|![car_antenna][image48]|
-|![car_antenna][image49]|
-|![car_antenna][image50]|
-|![car_antenna][image51]|
-|![car_antenna][image52]|
-|![car_antenna][image53]|
-|![car_antenna][image54]|
-|![car_antenna][image55]|
+|  Trailer Ex.   |   Trailer Ex.   | 
+|:----------------:|:----------------:|
+|![car_antenna][image48]|![car_antenna][image49]|
+|![car_antenna][image50]|![car_antenna][image51]|
+|![car_antenna][image52]|![car_antenna][image53]|
+|![car_antenna][image54]|![car_antenna][image55]|
 
 ---
 
@@ -285,20 +265,40 @@ This category includes any machinery that is used in contruction zones and sites
 
 ---
 
-|  Construction Equipment Ex. | 
-|:----------------:|
-|![car_antenna][image56]|
-|![car_antenna][image57]|
-|![car_antenna][image58]|
-|![car_antenna][image59]|
-|![car_antenna][image60]|
-|![car_antenna][image61]|
-|![car_antenna][image62]|
-|![car_antenna][image63]|
+|  Construction Equipment Ex. |   Construction Equipment Ex. |
+|:----------------:|:----------------:|
+|![constructequip1][image56]|![constructequip2][image57]|
+|![constructequip3][image58]|![constructequip4][image59]|
+|![constructequip5][image60]|![constructequip6][image61]|
+|![constructequip7][image62]|![constructequip8][image63]|
+
+---
+
+### Class Taxonomy: Rider
+
+This category includes non-pedstrians detected on the road. Our definition of **rider** is a human that would use some device to move a distance of at least 1 meter. Includes, riders/drivers of bicycle, motorbike, scooter, skateboards, horses, roller-blades, wheel-chairs, road cleaning cars, cars without roof. Note that a visible driver of a car with roof can only be seen through the window. 
+- Note: Since holes are not labeled, the human is included in the car label.
+
+---
+
+|  Rider Ex. | Rider Ex. |
+|:----------------:|:----------------:|
+|![rider1][image91]|![rider2][image92]|
+|![rider3][image93]|![rider4][image94]|
+|![rider5][image95]|![rider6][image96]|
+|![rider7][image97]|![rider8][image98]|
 
 ---
 
 
+
+## <font color='green'> Tips & Tricks </font>
+
+1. Objects that are smaller than <font color='red'>7 * 7 pixels</font> can be ignored. The bounding box smaller than <font color='red'>7 * 7 </font> will turn  <font color='grey'>grey</font> and disappear when you finish.
+2. Zoom in with your browser to draw the bounding boxes more accurately.
+3. Hit **"h"(keyboard)** to hide category label tags on the bounding boxes, and to show them after hitting **"h"(keyboard)** again.
+4. The remove operation is <font color='red'>irreversible</font>.
+5. If you refresh the page before submission, all previous history  <font color='red'>will not be saved</font>.
 
 
 ## For Developers:
@@ -408,10 +408,10 @@ Both drivable areas and lane markings are labeled by `poly2d`. Please check the 
 ---
 
 [//]: # (Image References)
-[image1]: readme_imgs/homepg.png
-[image2]: readme_imgs/create_projs.png
-[image3]: readme_imgs/upload_cfgs.png
-[image4]: readme_imgs/upload_anns.png
+[image1]: readme_imgs/homepg_resized.png
+[image2]: readme_imgs/create_projs_resized.png
+[image3]: readme_imgs/upload_cfgs_resized.png
+[image4]: readme_imgs/upload_anns_resized.png
 [image5]: readme_imgs/post_proj.png
 [image6]: readme_imgs/proj_dash.png
 [image7]: readme_imgs/export_task_urls.png
@@ -419,70 +419,70 @@ Both drivable areas and lane markings are labeled by `poly2d`. Please check the 
 [image9]: readme_imgs/truck_v_car2.png
 [image10]: readme_imgs/truck_v_car3.png
 [image11]: readme_imgs/bus_v_car.png
-[image12]: readme_imgs/car_antenna.png
-[image13]: readme_imgs/car_mislabel1.png
-[image14]: readme_imgs/car_mislabel2.png
-[image15]: readme_imgs/car_mislabel0.png
-[image16]: readme_imgs/carss1_resized.png
-[image17]: readme_imgs/carss2_resized.png
-[image18]: readme_imgs/car5_resized.png
-[image19]: readme_imgs/carss4_resized.png
-[image20]: readme_imgs/car3_resized.png
-[image21]: readme_imgs/car6_resized.png
-[image22]: readme_imgs/car7_resized.png
-[image23]: readme_imgs/car8_resized.png
-[image24]: readme_imgs/truck1_resized.png
-[image25]: readme_imgs/truck2_resized.png
-[image26]: readme_imgs/truck3_resized.png
-[image27]: readme_imgs/truck4_resized.png
-[image28]: readme_imgs/truck5_resized.png
-[image29]: readme_imgs/trucks6_resized.png
-[image30]: readme_imgs/truck7_resized.png
-[image31]: readme_imgs/truck8_resized.png
-[image32]: readme_imgs/semiss1_resized.png
-[image33]: readme_imgs/semi2_resized.png
-[image34]: readme_imgs/semiss3_resized.png
-[image35]: readme_imgs/semiss4_resized.png
-[image36]: readme_imgs/semiss5_resized.png
-[image37]: readme_imgs/semi6_resized.png
-[image38]: readme_imgs/semi7_resized.png
-[image39]: readme_imgs/semi8_resized.png
-[image40]: readme_imgs/bus1_resized.png
-[image41]: readme_imgs/bus2_resized.png
-[image42]: readme_imgs/bus3_resized.png
-[image43]: readme_imgs/bus4_resized.png
-[image44]: readme_imgs/bus5_resized.png
-[image45]: readme_imgs/bus6_resized.png
-[image46]: readme_imgs/bus7_resized.png
-[image47]: readme_imgs/bus8_resized.png
-[image48]: readme_imgs/trailer1_resized.png
-[image49]: readme_imgs/trailer2_resized.png
-[image50]: readme_imgs/trailer3_resized.png
-[image51]: readme_imgs/trailers4_resized.png
-[image52]: readme_imgs/trailers5_resized.png
-[image53]: readme_imgs/trailer6_resized.png
-[image54]: readme_imgs/trailer7_resized.png
-[image55]: readme_imgs/trailer8_resized.png
-[image56]: readme_imgs/construct-equips1_resized.png
-[image57]: readme_imgs/construct-equip5_resized.png
-[image58]: readme_imgs/construct-equip8_resized.png
-[image59]: readme_imgs/construct-equips4_resized.png
-[image60]: readme_imgs/construct-equip2_resized.png
-[image61]: readme_imgs/construct-equip6_resized.png
-[image62]: readme_imgs/construct-equip7_resized.png
-[image63]: readme_imgs/construct-equip3_resized.png
-[image64]: readme_imgs/truck9_resized.png
-[image65]: readme_imgs/truck10_resized.png
-[image66]: readme_imgs/truck11_resized.png
-[image67]: readme_imgs/truck12_resized.png
-[image68]: readme_imgs/occlusion1_resized.png
-[image69]: readme_imgs/occlusion2_resized.png
-[image70]: readme_imgs/occlusion3_resized.png
-[image71]: readme_imgs/occlusion4_resized.png
-[image72]: readme_imgs/truncation1_resized.png
-[image73]: readme_imgs/truncation2_resized.png
-[image74]: readme_imgs/truncation3_resized.png
-[image75]: readme_imgs/truncation4_resized.png
+[image12]: readme_imgs/car_antenna_resized.png
+[image13]: readme_imgs/car_mislabel1_resized.png
+[image14]: readme_imgs/car_mislabel2_resized.png
+[image15]: readme_imgs/car_mislabel0_resized.png
+[image16]: readme_imgs_dev/carss1_resized.png
+[image17]: readme_imgs_dev/carss2_resized.png
+[image18]: readme_imgs_dev/car5_resized.png
+[image19]: readme_imgs_dev/carss4_resized.png
+[image20]: readme_imgs_dev/car3_resized.png
+[image21]: readme_imgs_dev/car6_resized.png
+[image22]: readme_imgs_dev/car7_resized.png
+[image23]: readme_imgs_dev/car8_resized.png
+[image24]: readme_imgs_dev/truck1_resized.png
+[image25]: readme_imgs_dev/truck2_resized.png
+[image26]: readme_imgs_dev/truck3_resized.png
+[image27]: readme_imgs_dev/truck4_resized.png
+[image28]: readme_imgs_dev/truck5_resized.png
+[image29]: readme_imgs_dev/trucks6_resized.png
+[image30]: readme_imgs_dev/truck7_resized.png
+[image31]: readme_imgs_dev/truck8_resized.png
+[image32]: readme_imgs_dev/semiss1_resized.png
+[image33]: readme_imgs_dev/semi2_resized.png
+[image34]: readme_imgs_dev/semiss3_resized.png
+[image35]: readme_imgs_dev/semiss4_resized.png
+[image36]: readme_imgs_dev/semiss5_resized.png
+[image37]: readme_imgs_dev/semi6_resized.png
+[image38]: readme_imgs_dev/semi7_resized.png
+[image39]: readme_imgs_dev/semi8_resized.png
+[image40]: readme_imgs_dev/bus1_resized.png
+[image41]: readme_imgs_dev/bus2_resized.png
+[image42]: readme_imgs_dev/bus3_resized.png
+[image43]: readme_imgs_dev/bus4_resized.png
+[image44]: readme_imgs_dev/bus5_resized.png
+[image45]: readme_imgs_dev/bus6_resized.png
+[image46]: readme_imgs_dev/bus7_resized.png
+[image47]: readme_imgs_dev/bus8_resized.png
+[image48]: readme_imgs_dev/trailer1_resized.png
+[image49]: readme_imgs_dev/trailer2_resized.png
+[image50]: readme_imgs_dev/trailer3_resized.png
+[image51]: readme_imgs_dev/trailers4_resized.png
+[image52]: readme_imgs_dev/trailers5_resized.png
+[image53]: readme_imgs_dev/trailer6_resized.png
+[image54]: readme_imgs_dev/trailer7_resized.png
+[image55]: readme_imgs_dev/trailer8_resized.png
+[image56]: readme_imgs_dev/construct-equips1_resized.png
+[image57]: readme_imgs_dev/construct-equip5_resized.png
+[image58]: readme_imgs_dev/construct-equip8_resized.png
+[image59]: readme_imgs_dev/construct-equips4_resized.png
+[image60]: readme_imgs_dev/construct-equip2_resized.png
+[image61]: readme_imgs_dev/construct-equip6_resized.png
+[image62]: readme_imgs_dev/construct-equip7_resized.png
+[image63]: readme_imgs_dev/construct-equip3_resized.png
+[image64]: readme_imgs_dev/truck9_resized.png
+[image65]: readme_imgs_dev/truck10_resized.png
+[image66]: readme_imgs_dev/truck11_resized.png
+[image67]: readme_imgs_dev/truck12_resized.png
+[image68]: readme_imgs_dev/occlusion1_resized.png
+[image69]: readme_imgs_dev/occlusion2_resized.png
+[image70]: readme_imgs_dev/occlusion3_resized.png
+[image71]: readme_imgs_dev/occlusion4_resized.png
+[image72]: readme_imgs_dev/truncation1_resized.png
+[image73]: readme_imgs_dev/truncation2_resized.png
+[image74]: readme_imgs_dev/truncation3_resized.png
+[image75]: readme_imgs_dev/truncation4_resized.png
 [image76]: readme_imgs/label_qa_slide2.png
 [image77]: readme_imgs/label_qa_slide3.png
 [image78]: readme_imgs/label_qa_slide4.png
@@ -498,4 +498,18 @@ Both drivable areas and lane markings are labeled by `poly2d`. Please check the 
 [image88]: readme_imgs/label_qa_slide14.png
 [image89]: readme_imgs/label_qa_slide15.png
 [image90]: readme_imgs/label_qa_slide16.png
+[image91]: readme_imgs_dev/rider1_resized.png
+[image92]: readme_imgs_dev/rider2_resized.png
+[image93]: readme_imgs_dev/rider3_resized.png
+[image94]: readme_imgs_dev/rider4_resized.png
+[image95]: readme_imgs_dev/rider5_resized.png
+[image96]: readme_imgs_dev/rider6_resized.png
+[image97]: readme_imgs_dev/rider7_resized.png
+[image98]: readme_imgs_dev/rider8_resized.png
 
+
+
+
+```python
+
+```
