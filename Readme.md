@@ -20,7 +20,7 @@ To create a project, navigate to the [Scalabel Application](http://ec2-52-25-35-
 
 |  BDD100K - PT1    |  BDD100K - PT2   |  BDD100K - PT3    |  BDD100K - PT4    |
 |:-----------------:|:----------------:|:-----------------:|:-----------------:|
-|    [PT1](http://ec2-52-25-35-71.us-west-2.compute.amazonaws.com:8686/label2d?project_name=BDD100K-Kache-PT1_4&task_index=0)   |   [PT2](http://ec2-52-25-35-71.us-west-2.compute.amazonaws.com:8686/label2d?project_name=BDD100K-Kache-PT2_4&task_index=0)   |   [PT3](http://ec2-52-25-35-71.us-west-2.compute.amazonaws.com:8686/label2d?project_name=BDD100K-Kache-PT3_4&task_index=0)   |    [PT4](http://ec2-52-25-35-71.us-west-2.compute.amazonaws.com:8686/label2d?project_name=BDD100K-Kache-PT4_4&task_index=0)   |
+|    [PT1](http://ec2-34-220-66-194.us-west-2.compute.amazonaws.com:8686/label2d?project_name=BDD100K-Kache-PT1_4&task_index=0)   |   [PT2](http://ec2-34-220-66-194.us-west-2.compute.amazonaws.com:8686/label2d?project_name=BDD100K-Kache-PT2_4&task_index=0)   |   [PT3](ec2-34-220-66-194.us-west-2.compute.amazonaws.com:8686/label2d?project_name=BDD100K-Kache-PT3_4&task_index=0)   |    [PT4](ec2-34-220-66-194.us-west-2.compute.amazonaws.com:8686/label2d?project_name=BDD100K-Kache-PT4_4&task_index=0)   |
 
 ---
 
